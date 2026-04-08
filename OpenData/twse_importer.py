@@ -197,13 +197,18 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
         with sqlite3.connect(db_path):
             pass
 
+    stage = "open_connection"
+    rows_count = 0
+
     try:
         with sqlite3.connect(db_path) as connection:
+            stage = "init_schema"
             init_database(connection, schema_path)
 
             if args.init_schema:
                 return 0, db_path
 
+            stage = "load_rows"
             rows = (
                 fetch_rows(
                     api_url=dataset_config.api_url,
@@ -214,7 +219,9 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                 if args.fetch
                 else load_rows(input_json)
             )
+            rows_count = len(rows)
 
+            stage = "upsert_rows"
             started_at = perf_counter()
             imported = upsert_rows(
                 connection,
@@ -223,6 +230,8 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                 table_name=dataset_config.table_name,
                 primary_key=target.primary_key,
             )
+
+            stage = "commit"
             connection.commit()
 
             if system_config.debug:
@@ -236,8 +245,11 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                 )
     except sqlite3.Error:
         LOGGER.exception(
-            "SQLite 匯入流程失敗: dataset=%s db_path=%s schema_path=%s input_json=%s",
+            "SQLite 匯入流程失敗: dataset=%s stage=%s table=%s rows_count=%s db_path=%s schema_path=%s input_json=%s",
             target.dataset_name,
+            stage,
+            dataset_config.table_name,
+            rows_count,
             db_path,
             schema_path,
             input_json,
