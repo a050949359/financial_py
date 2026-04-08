@@ -21,6 +21,7 @@ from init import create_sqlite_database_file, get_dataset_config, get_system_con
 
 
 FetchRows = Callable[..., list[dict[str, Any]]]
+RowTransform = Callable[[dict[str, Any]], dict[str, str]]
 LOGGER = logging.getLogger(__name__)
 
 
@@ -32,6 +33,9 @@ class ImportTarget:
     json_path: Path
     primary_key: str
     field_mapping: dict[str, str]
+    insert_columns: tuple[str, ...]
+    conflict_columns: tuple[str, ...]
+    row_transform: RowTransform | None
     description: str
     default_api_endpoint: str
     default_schema_path: str
@@ -49,6 +53,9 @@ def create_import_target(
     default_schema_path: str,
     default_table_name: str,
     default_json_name: str,
+    insert_columns: tuple[str, ...] | None = None,
+    conflict_columns: tuple[str, ...] | None = None,
+    row_transform: RowTransform | None = None,
     config_path: Path | None = None,
 ) -> ImportTarget:
     dataset_config = get_dataset_config(
@@ -66,6 +73,9 @@ def create_import_target(
         json_path=dataset_config.json_path,
         primary_key=primary_key,
         field_mapping=field_mapping,
+        insert_columns=insert_columns or tuple(field_mapping.values()),
+        conflict_columns=conflict_columns or (primary_key,),
+        row_transform=row_transform,
         description=description,
         default_api_endpoint=default_api_endpoint,
         default_schema_path=default_schema_path,
@@ -131,7 +141,14 @@ def load_rows(input_json: Path) -> list[dict[str, Any]]:
     return payload
 
 
-def normalize_row(row: dict[str, Any], field_mapping: dict[str, str]) -> dict[str, str]:
+def normalize_row(
+    row: dict[str, Any],
+    field_mapping: dict[str, str],
+    row_transform: RowTransform | None = None,
+) -> dict[str, str]:
+    if row_transform is not None:
+        return row_transform(row)
+
     normalized: dict[str, str] = {}
     for source_key, target_key in field_mapping.items():
         value = row.get(source_key, "")
@@ -139,17 +156,19 @@ def normalize_row(row: dict[str, Any], field_mapping: dict[str, str]) -> dict[st
     return normalized
 
 
-def build_upsert_sql(table_name: str, insert_columns: list[str], primary_key: str) -> str:
+def build_upsert_sql(table_name: str, insert_columns: list[str], conflict_columns: tuple[str, ...]) -> str:
     placeholders = ", ".join(f":{column}" for column in insert_columns)
+    conflict_column_set = set(conflict_columns)
     assignments = ", ".join(
         f"{column} = excluded.{column}"
         for column in insert_columns
-        if column != primary_key
+        if column not in conflict_column_set
     )
     columns = ", ".join(insert_columns)
+    conflict_target = ", ".join(conflict_columns)
     return (
         f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) "
-        f"ON CONFLICT({primary_key}) DO UPDATE SET {assignments}, imported_at = CURRENT_TIMESTAMP"
+        f"ON CONFLICT({conflict_target}) DO UPDATE SET {assignments}, imported_at = CURRENT_TIMESTAMP"
     )
 
 
@@ -158,16 +177,17 @@ def upsert_rows(
     rows: Iterable[dict[str, Any]],
     *,
     field_mapping: dict[str, str],
+    insert_columns: tuple[str, ...],
     table_name: str,
-    primary_key: str,
+    conflict_columns: tuple[str, ...],
+    row_transform: RowTransform | None = None,
 ) -> int:
-    insert_columns = list(field_mapping.values())
-    normalized_rows = [normalize_row(row, field_mapping) for row in rows]
+    normalized_rows = [normalize_row(row, field_mapping, row_transform) for row in rows]
     if not normalized_rows:
         return 0
 
     connection.executemany(
-        build_upsert_sql(table_name, insert_columns, primary_key),
+        build_upsert_sql(table_name, list(insert_columns), conflict_columns),
         normalized_rows,
     )
 
@@ -227,8 +247,10 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                 connection,
                 rows,
                 field_mapping=target.field_mapping,
+                insert_columns=target.insert_columns,
                 table_name=dataset_config.table_name,
-                primary_key=target.primary_key,
+                conflict_columns=target.conflict_columns,
+                row_transform=target.row_transform,
             )
 
             stage = "commit"

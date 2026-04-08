@@ -17,3 +17,21 @@ api_endpoint = "/opendata/t187ap47_L"
 schema_path = "database/init_fund.sql"
 table_name = "funds"
 json_name = "fund.json"
+
+[day_report]
+api_endpoint = "/exchangeReport/STOCK_DAY_ALL"
+schema_path = "database/init_day_report.sql"
+table_name = "day_reports"
+json_name = "day_report.json"
+
+[month_report]
+api_endpoint = "/exchangeReport/FMSRFK_ALL"
+schema_path = "database/init_month_report.sql"
+table_name = "month_reports"
+json_name = "month_report.json"
+
+[year_report]
+api_endpoint = "/exchangeReport/FMNPTK_ALL"
+schema_path = "database/init_year_report.sql"
+table_name = "year_reports"
+json_name = "year_report.json"

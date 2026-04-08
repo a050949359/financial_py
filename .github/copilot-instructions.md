@@ -13,7 +13,7 @@
 - 共用初始化與設定解析放在 init.py。
 - 共用 API 抓取能力放在 core/fetcher.py。
 - 共用 SQLite 匯入能力放在 core/importer.py。
-- dataset 專屬邏輯集中在 TWSE/company.py 與 TWSE/fund.py。
+- dataset 專屬邏輯集中在 TWSE/（如 company.py、fund.py、day_reports.py、month_reports.py、year_reports.py）。
 - Makefile 是主要操作入口，新增功能時優先思考是否需要對應的 make target。
 
 ## 命名規範
@@ -28,7 +28,7 @@
 - 所有可調整路徑都應優先從 config.toml 讀取。
 - 不要把專案路徑硬編碼在 company.py 或 fund.py。
 - [system] 只放共用設定，例如 db_path、source_dir、log_path、log_retention_days。
-- dataset 專屬設定只放在 [company] 或 [fund]。
+- dataset 專屬設定只放在 [company]、[fund]、[day_report]、[month_report] 或 [year_report]。
 
 ### 設定 API 使用準則
 
