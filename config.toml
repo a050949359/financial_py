@@ -1,0 +1,18 @@
+[opendata]
+db_driver = "sqlite"
+db_path = "OpenData/database/twse.db"
+source_dir = "Source"
+log_path = "log"
+log_retention_days = 30
+
+[company]
+api_endpoint = "/opendata/t187ap03_L"
+schema_path = "database/init_company.sql"
+table_name = "listed_company_basic"
+json_name = "listed_company.json"
+
+[fund]
+api_endpoint = "/opendata/t187ap47_L"
+schema_path = "database/init_fund.sql"
+table_name = "fund_basic"
+json_name = "fund.json"
