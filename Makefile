@@ -49,9 +49,17 @@ init-fund-schema:
 	$(PYTHON) $(OPEN_DATA_DIR)/fund.py --config $(CONFIG) --init-schema
 
 import-company:
+	@if [ ! -f "$(TWSE_DIR)/Source/listed_company.json" ]; then \
+		echo "Source/listed_company.json not found, running fetch-company first"; \
+		$(MAKE) fetch-company CONFIG=$(CONFIG); \
+	fi
 	$(PYTHON) $(OPEN_DATA_DIR)/company.py --config $(CONFIG)
 
 import-fund:
+	@if [ ! -f "$(TWSE_DIR)/Source/fund.json" ]; then \
+		echo "Source/fund.json not found, running fetch-fund first"; \
+		$(MAKE) fetch-fund CONFIG=$(CONFIG); \
+	fi
 	$(PYTHON) $(OPEN_DATA_DIR)/fund.py --config $(CONFIG)
 
 sync-company:

@@ -120,7 +120,7 @@ def resolve_target(
     dataset_name: str,
     default_api_endpoint: str = "/opendata/t187ap03_L",
     default_schema_path: str = "database/init_company.sql",
-    default_table_name: str = "listed_company_basic",
+    default_table_name: str = "companies",
     default_json_name: str = "listed_company.json",
     api_url: str | None = None,
     output_path: Path | None = None,

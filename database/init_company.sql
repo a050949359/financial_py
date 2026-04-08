@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS listed_company_basic (
+CREATE TABLE IF NOT EXISTS companies (
     company_code TEXT PRIMARY KEY,
     data_date TEXT NOT NULL,
     company_name TEXT,
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS listed_company_basic (
     imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_listed_company_basic_name
-ON listed_company_basic (company_name);
+CREATE INDEX IF NOT EXISTS idx_companies_name
+ON companies (company_name);
 
-CREATE INDEX IF NOT EXISTS idx_listed_company_basic_industry
-ON listed_company_basic (industry_category);
+CREATE INDEX IF NOT EXISTS idx_companies_industry
+ON companies (industry_category);

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS fund_basic (
+CREATE TABLE IF NOT EXISTS funds (
     fund_code TEXT PRIMARY KEY,
     data_date TEXT NOT NULL,
     fund_short_name TEXT,
@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS fund_basic (
     imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_fund_basic_name_zh
-ON fund_basic (fund_name_zh);
+CREATE INDEX IF NOT EXISTS idx_funds_name_zh
+ON funds (fund_name_zh);
 
-CREATE INDEX IF NOT EXISTS idx_fund_basic_type
-ON fund_basic (fund_type);
+CREATE INDEX IF NOT EXISTS idx_funds_type
+ON funds (fund_type);

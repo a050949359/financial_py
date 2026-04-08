@@ -203,6 +203,7 @@ cython_debug/
 
 # Project artifacts
 database/twse.db
+*.json
 
 # Marimo
 marimo/_static/
