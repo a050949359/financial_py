@@ -190,7 +190,7 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
     schema_path = args.schema_path or dataset_config.schema_path
     input_json = args.input_json or dataset_config.json_path
 
-    if db_path == system_config.db_path:
+    if db_path.resolve() == system_config.db_path.resolve():
         create_sqlite_database_file(args.config)
     else:
         db_path.parent.mkdir(parents=True, exist_ok=True)
