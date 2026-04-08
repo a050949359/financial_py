@@ -4,7 +4,8 @@
 
 ## 目錄說明
 
-- OpenData/: Python 腳本與共用抓取、匯入模組
+- TWSE/: dataset 專屬流程腳本
+- core/fetcher.py / core/importer.py: 共用抓取與匯入模組
 - Source/: 下載回來的原始 JSON
 - database/: SQLite schema SQL
 - log/: 執行過程中的錯誤 log
@@ -63,7 +64,7 @@ make fetch-fund CONFIG=/path/to/config.toml
 ```toml
 [system]
 db_driver = "sqlite"
-db_path = "OpenData/database/twse.db"
+db_path = "database/twse.db"
 source_dir = "Source"
 log_path = "log"
 log_retention_days = 30

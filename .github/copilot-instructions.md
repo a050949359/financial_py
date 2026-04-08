@@ -7,13 +7,13 @@
 ## 架構原則
 
 - 不要把原始資料、程式碼、schema、log 混放在同一層。
-- 原始 JSON 一律放在 Source/。
+- 原始 JSON 一律放在 Source/，且 `Source/*.json` 不納入版本控制（由 .gitignore 管理）。
 - schema SQL 一律放在 database/。
 - 共用設定一律放在 config.toml。
 - 共用初始化與設定解析放在 init.py。
-- 共用 API 抓取能力放在 OpenData/twse_fetcher.py。
-- 共用 SQLite 匯入能力放在 OpenData/twse_importer.py。
-- dataset 專屬邏輯集中在 OpenData/company.py 與 OpenData/fund.py。
+- 共用 API 抓取能力放在 core/fetcher.py。
+- 共用 SQLite 匯入能力放在 core/importer.py。
+- dataset 專屬邏輯集中在 TWSE/company.py 與 TWSE/fund.py。
 - Makefile 是主要操作入口，新增功能時優先思考是否需要對應的 make target。
 
 ## 命名規範
@@ -21,7 +21,7 @@
 - dataset 名稱維持 company 與 fund，不要再引入重複別名。
 - schema 檔名使用 init_<dataset>.sql 格式。
 - 不要再引入 basic、service、process、importer 的重複變體來表示同一層責任，除非責任真的不同。
-- 共用模組名稱維持 twse_fetcher.py 與 twse_importer.py。
+- 共用模組名稱維持 core/fetcher.py 與 core/importer.py。
 
 ## 設定規範
 

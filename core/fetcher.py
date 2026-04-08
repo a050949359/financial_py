@@ -22,7 +22,7 @@ from init import get_dataset_config, get_system_config, setup_logging
 
 DEFAULT_BASE_URL = "https://openapi.twse.com.tw/v1"
 DEFAULT_DESCRIPTION = "抓取 TWSE OpenAPI"
-DEFAULT_OUTPUT_PATH = Path("OpenData/opendata.json")
+DEFAULT_OUTPUT_PATH = Path("TWSE/opendata.json")
 LOGGER = logging.getLogger(__name__)
 
 

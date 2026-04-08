@@ -127,7 +127,7 @@ def get_system_config(config_path: Path | None = None) -> SystemConfig:
         db_path=_resolve_path(
             project_root,
             system_config.get("db_path", ""),
-            "OpenData/database/twse.db",
+            "database/twse.db",
         ),
         source_dir=_resolve_path(
             project_root,

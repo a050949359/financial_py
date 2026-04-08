@@ -1,6 +1,6 @@
 PYTHON ?= python3
 TWSE_DIR := $(CURDIR)
-OPEN_DATA_DIR := $(TWSE_DIR)/OpenData
+TWSE_MODULE_DIR := $(TWSE_DIR)/TWSE
 CONFIG_FILE := $(TWSE_DIR)/config.toml
 
 CONFIG ?= $(CONFIG_FILE)
@@ -37,36 +37,36 @@ init-db:
 	$(PYTHON) $(TWSE_DIR)/init.py --config $(CONFIG)
 
 fetch-company:
-	$(PYTHON) $(OPEN_DATA_DIR)/company.py --fetch-json $(FETCH_ARGS)
+	$(PYTHON) $(TWSE_MODULE_DIR)/company.py --fetch-json $(FETCH_ARGS)
 
 fetch-fund:
-	$(PYTHON) $(OPEN_DATA_DIR)/fund.py --fetch-json $(FETCH_ARGS)
+	$(PYTHON) $(TWSE_MODULE_DIR)/fund.py --fetch-json $(FETCH_ARGS)
 
 init-company-schema:
-	$(PYTHON) $(OPEN_DATA_DIR)/company.py --config $(CONFIG) --init-schema
+	$(PYTHON) $(TWSE_MODULE_DIR)/company.py --config $(CONFIG) --init-schema
 
 init-fund-schema:
-	$(PYTHON) $(OPEN_DATA_DIR)/fund.py --config $(CONFIG) --init-schema
+	$(PYTHON) $(TWSE_MODULE_DIR)/fund.py --config $(CONFIG) --init-schema
 
 import-company:
 	@if [ ! -f "$(TWSE_DIR)/Source/listed_company.json" ]; then \
 		echo "Source/listed_company.json not found, running fetch-company first"; \
 		$(MAKE) fetch-company CONFIG=$(CONFIG); \
 	fi
-	$(PYTHON) $(OPEN_DATA_DIR)/company.py --config $(CONFIG)
+	$(PYTHON) $(TWSE_MODULE_DIR)/company.py --config $(CONFIG)
 
 import-fund:
 	@if [ ! -f "$(TWSE_DIR)/Source/fund.json" ]; then \
 		echo "Source/fund.json not found, running fetch-fund first"; \
 		$(MAKE) fetch-fund CONFIG=$(CONFIG); \
 	fi
-	$(PYTHON) $(OPEN_DATA_DIR)/fund.py --config $(CONFIG)
+	$(PYTHON) $(TWSE_MODULE_DIR)/fund.py --config $(CONFIG)
 
 sync-company:
-	$(PYTHON) $(OPEN_DATA_DIR)/company.py --config $(CONFIG) --fetch
+	$(PYTHON) $(TWSE_MODULE_DIR)/company.py --config $(CONFIG) --fetch
 
 sync-fund:
-	$(PYTHON) $(OPEN_DATA_DIR)/fund.py --config $(CONFIG) --fetch
+	$(PYTHON) $(TWSE_MODULE_DIR)/fund.py --config $(CONFIG) --fetch
 
 clean-company-json:
 	rm -f $(TWSE_DIR)/Source/listed_company.json
