@@ -8,6 +8,7 @@ import json
 import logging
 from pathlib import Path
 import sqlite3
+from time import perf_counter
 import sys
 from typing import Any, Callable, Iterable
 
@@ -16,7 +17,7 @@ PARENT_DIR = Path(__file__).resolve().parents[1]
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from init import create_sqlite_database_file, load_dataset_config, load_opendata_config, setup_logging
+from init import create_sqlite_database_file, get_dataset_config, get_system_config, setup_logging
 
 
 FetchRows = Callable[..., list[dict[str, Any]]]
@@ -50,7 +51,7 @@ def create_import_target(
     default_json_name: str,
     config_path: Path | None = None,
 ) -> ImportTarget:
-    dataset_config = load_dataset_config(
+    dataset_config = get_dataset_config(
         dataset_name,
         config_path,
         default_api_endpoint=default_api_endpoint,
@@ -73,31 +74,30 @@ def create_import_target(
     )
 
 
-def build_parser(default_target: ImportTarget) -> argparse.ArgumentParser:
-    default_open_data_config = load_opendata_config()
-    parser = argparse.ArgumentParser(description=default_target.description)
+def build_parser(description: str) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "--config",
         type=Path,
-        default=default_open_data_config.config_path,
+        default=None,
         help="config.toml 路徑",
     )
     parser.add_argument(
         "--db-path",
         type=Path,
-        default=default_open_data_config.db_path,
+        default=None,
         help="SQLite 資料庫檔案路徑",
     )
     parser.add_argument(
         "--schema-path",
         type=Path,
-        default=default_target.schema_path,
+        default=None,
         help="初始化 SQL 檔案路徑",
     )
     parser.add_argument(
         "--input-json",
         type=Path,
-        default=default_target.json_path,
+        default=None,
         help="來源 JSON 檔案路徑",
     )
     parser.add_argument(
@@ -121,11 +121,7 @@ def build_parser(default_target: ImportTarget) -> argparse.ArgumentParser:
 
 def init_database(connection: sqlite3.Connection, schema_path: Path) -> None:
     sql = schema_path.read_text(encoding="utf-8")
-    try:
-        connection.executescript(sql)
-    except sqlite3.Error:
-        LOGGER.exception("SQLite schema 初始化失敗: schema_path=%s", schema_path)
-        raise
+    connection.executescript(sql)
 
 
 def load_rows(input_json: Path) -> list[dict[str, Any]]:
@@ -170,27 +166,18 @@ def upsert_rows(
     if not normalized_rows:
         return 0
 
-    try:
-        connection.executemany(
-            build_upsert_sql(table_name, insert_columns, primary_key),
-            normalized_rows,
-        )
-    except sqlite3.Error:
-        LOGGER.exception(
-            "SQLite 資料匯入失敗: table=%s rows=%s primary_key=%s",
-            table_name,
-            len(normalized_rows),
-            primary_key,
-        )
-        raise
+    connection.executemany(
+        build_upsert_sql(table_name, insert_columns, primary_key),
+        normalized_rows,
+    )
 
     return len(normalized_rows)
 
 
 def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: FetchRows) -> tuple[int, Path]:
     setup_logging(args.config, LOGGER.name)
-    open_data_config = load_opendata_config(args.config)
-    dataset_config = load_dataset_config(
+    system_config = get_system_config(args.config)
+    dataset_config = get_dataset_config(
         target.dataset_name,
         args.config,
         default_api_endpoint=target.default_api_endpoint,
@@ -199,34 +186,43 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
         default_json_name=target.default_json_name,
     )
 
-    default_db_path = load_opendata_config().db_path
-    default_schema_path = target.schema_path
-    default_json_path = target.json_path
+    db_path = args.db_path or system_config.db_path
+    schema_path = args.schema_path or dataset_config.schema_path
+    input_json = args.input_json or dataset_config.json_path
 
-    db_path = args.db_path if args.db_path != default_db_path else open_data_config.db_path
-    schema_path = args.schema_path if args.schema_path != default_schema_path else dataset_config.schema_path
-    input_json = args.input_json if args.input_json != default_json_path else dataset_config.json_path
-
-    if db_path == open_data_config.db_path:
+    if db_path.resolve() == system_config.db_path.resolve():
         create_sqlite_database_file(args.config)
     else:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(db_path):
             pass
 
+    stage = "open_connection"
+    rows_count = 0
+
     try:
         with sqlite3.connect(db_path) as connection:
+            stage = "init_schema"
             init_database(connection, schema_path)
 
             if args.init_schema:
                 return 0, db_path
 
+            stage = "load_rows"
             rows = (
-                fetch_rows(api_url=dataset_config.api_url, timeout=args.timeout, config_path=args.config)
+                fetch_rows(
+                    api_url=dataset_config.api_url,
+                    timeout=args.timeout,
+                    config_path=args.config,
+                    debug_enabled=system_config.debug,
+                )
                 if args.fetch
                 else load_rows(input_json)
             )
+            rows_count = len(rows)
 
+            stage = "upsert_rows"
+            started_at = perf_counter()
             imported = upsert_rows(
                 connection,
                 rows,
@@ -234,11 +230,27 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                 table_name=dataset_config.table_name,
                 primary_key=target.primary_key,
             )
+
+            stage = "commit"
             connection.commit()
-    except sqlite3.Error:
+
+            if system_config.debug:
+                elapsed_seconds = perf_counter() - started_at
+                LOGGER.info(
+                    "SQLite import finished: dataset=%s table=%s rows=%s elapsed_seconds=%.3f",
+                    target.dataset_name,
+                    dataset_config.table_name,
+                    imported,
+                    elapsed_seconds,
+                )
+    except Exception as exc:
         LOGGER.exception(
-            "SQLite 匯入流程失敗: dataset=%s db_path=%s schema_path=%s input_json=%s",
+            "匯入流程失敗: dataset=%s stage=%s error_type=%s table=%s rows_count=%s db_path=%s schema_path=%s input_json=%s",
             target.dataset_name,
+            stage,
+            type(exc).__name__,
+            dataset_config.table_name,
+            rows_count,
             db_path,
             schema_path,
             input_json,

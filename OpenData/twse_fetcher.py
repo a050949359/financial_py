@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import json
 import logging
 from pathlib import Path
+from time import perf_counter
 import sys
 from typing import Any
 from urllib.request import Request, urlopen
@@ -16,12 +17,12 @@ PARENT_DIR = Path(__file__).resolve().parents[1]
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from init import load_dataset_config, load_opendata_config, setup_logging
+from init import get_dataset_config, get_system_config, setup_logging
 
 
-DEFAULT_CONFIG = load_opendata_config()
 DEFAULT_BASE_URL = "https://openapi.twse.com.tw/v1"
 DEFAULT_DESCRIPTION = "抓取 TWSE OpenAPI"
+DEFAULT_OUTPUT_PATH = Path("OpenData/opendata.json")
 LOGGER = logging.getLogger(__name__)
 
 
@@ -42,9 +43,8 @@ def request_json(
     url: str,
     timeout: int = 30,
     headers: dict[str, str] | None = None,
-    config_path: Path | None = None,
+    debug_enabled: bool = False,
 ) -> Any:
-    setup_logging(config_path, LOGGER.name)
     request_headers = {
         "Accept": "application/json",
         "User-Agent": "py_shell-twse-opendata/1.0",
@@ -53,14 +53,36 @@ def request_json(
         request_headers.update(headers)
 
     request = Request(url, headers=request_headers)
+    started_at = perf_counter()
     try:
         with urlopen(request, timeout=timeout) as response:
             payload = response.read().decode("utf-8")
 
-        return json.loads(payload)
+        result = json.loads(payload)
+        if debug_enabled:
+            elapsed_seconds = perf_counter() - started_at
+            LOGGER.info(
+                "TWSE API query finished: status=success url=%s timeout=%s elapsed_seconds=%.3f",
+                url,
+                timeout,
+                elapsed_seconds,
+            )
+        return result
     except Exception:
-        LOGGER.exception("TWSE API 呼叫失敗: url=%s timeout=%s", url, timeout)
+        elapsed_seconds = perf_counter() - started_at
+        LOGGER.exception(
+            "TWSE API 呼叫失敗: url=%s timeout=%s elapsed_seconds=%.3f",
+            url,
+            timeout,
+            elapsed_seconds,
+        )
         raise
+
+
+def initialize_fetch_runtime(config_path: Path | None = None) -> bool:
+    config = get_system_config(config_path)
+    setup_logging(config.config_path, LOGGER.name)
+    return config.debug
 
 
 def fetch_twse_opendata(
@@ -68,11 +90,16 @@ def fetch_twse_opendata(
     timeout: int = 30,
     base_url: str = DEFAULT_BASE_URL,
     config_path: Path | None = None,
+    debug_enabled: bool | None = None,
 ) -> list[dict[str, Any]]:
+    effective_debug = debug_enabled
+    if effective_debug is None:
+        effective_debug = initialize_fetch_runtime(config_path)
+
     data = request_json(
         build_api_url(api_path, base_url=base_url),
         timeout=timeout,
-        config_path=config_path,
+        debug_enabled=effective_debug,
     )
     if not isinstance(data, list):
         raise ValueError("TWSE API 回傳格式不是陣列")
@@ -90,7 +117,7 @@ def create_target(api_url: str, output_path: Path, description: str = DEFAULT_DE
 def resolve_target(
     config_path: Path | None = None,
     *,
-    dataset_name: str | None = None,
+    dataset_name: str,
     default_api_endpoint: str = "/opendata/t187ap03_L",
     default_schema_path: str = "database/init_company.sql",
     default_table_name: str = "listed_company_basic",
@@ -99,21 +126,16 @@ def resolve_target(
     output_path: Path | None = None,
     description: str = DEFAULT_DESCRIPTION,
 ) -> OpenDataTarget:
-    if dataset_name:
-        dataset = load_dataset_config(
-            dataset_name,
-            config_path,
-            default_api_endpoint=default_api_endpoint,
-            default_schema_path=default_schema_path,
-            default_table_name=default_table_name,
-            default_json_name=default_json_name,
-        )
-        resolved_api_url = api_url or dataset.api_url
-        resolved_output_path = output_path or dataset.json_path
-    else:
-        config = load_opendata_config(config_path)
-        resolved_api_url = api_url or DEFAULT_BASE_URL
-        resolved_output_path = output_path or config.project_root / "OpenData" / "opendata.json"
+    dataset = get_dataset_config(
+        dataset_name,
+        config_path,
+        default_api_endpoint=default_api_endpoint,
+        default_schema_path=default_schema_path,
+        default_table_name=default_table_name,
+        default_json_name=default_json_name,
+    )
+    resolved_api_url = api_url or dataset.api_url
+    resolved_output_path = output_path or dataset.json_path
 
     return OpenDataTarget(
         api_url=resolved_api_url,
@@ -122,8 +144,8 @@ def resolve_target(
     )
 
 
-def fetch_target(target: OpenDataTarget, timeout: int = 30, config_path: Path | None = None) -> Any:
-    return request_json(target.api_url, timeout=timeout, config_path=config_path)
+def fetch_target(target: OpenDataTarget, timeout: int = 30, debug_enabled: bool = False) -> Any:
+    return request_json(target.api_url, timeout=timeout, debug_enabled=debug_enabled)
 
 
 def save_json(data: Any, output_path: Path) -> None:
@@ -139,20 +161,29 @@ def run_fetch(
     timeout: int = 30,
     output_path: Path | None = None,
     config_path: Path | None = None,
+    debug_enabled: bool | None = None,
 ) -> tuple[Any, Path]:
+    effective_debug = debug_enabled
+    if effective_debug is None:
+        effective_debug = initialize_fetch_runtime(config_path)
+
     resolved_output_path = output_path or target.output_path
-    data = fetch_target(target, timeout=timeout, config_path=config_path)
+    data = fetch_target(target, timeout=timeout, debug_enabled=effective_debug)
     save_json(data, resolved_output_path)
     return data, resolved_output_path
 
 
 def build_parser(default_target: OpenDataTarget | None = None) -> argparse.ArgumentParser:
-    target = default_target or resolve_target(description=DEFAULT_DESCRIPTION)
+    target = default_target or create_target(
+        DEFAULT_BASE_URL,
+        DEFAULT_OUTPUT_PATH,
+        DEFAULT_DESCRIPTION,
+    )
     parser = argparse.ArgumentParser(description=target.description)
     parser.add_argument(
         "--config",
         type=Path,
-        default=DEFAULT_CONFIG.config_path,
+        default=None,
         help="config.toml 路徑",
     )
     parser.add_argument(
@@ -183,14 +214,15 @@ def build_parser(default_target: OpenDataTarget | None = None) -> argparse.Argum
 def main(default_target: OpenDataTarget | None = None) -> None:
     parser = build_parser(default_target)
     args = parser.parse_args()
+    debug_enabled = initialize_fetch_runtime(args.config)
 
-    target = resolve_target(
-        args.config,
-        api_url=args.api_url,
-        output_path=args.output,
-        description=args.description,
+    target = create_target(args.api_url, args.output, args.description)
+    data, saved_path = run_fetch(
+        target,
+        timeout=args.timeout,
+        config_path=args.config,
+        debug_enabled=debug_enabled,
     )
-    data, saved_path = run_fetch(target, timeout=args.timeout, config_path=args.config)
 
     print(f"fetched {len(data)} rows")
     print(f"saved to {saved_path}")

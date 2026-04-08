@@ -30,6 +30,14 @@
 - [system] 只放共用設定，例如 db_path、source_dir、log_path、log_retention_days。
 - dataset 專屬設定只放在 [company] 或 [fund]。
 
+### 設定 API 使用準則
+
+- 讀取原始設定時，使用 `init.py` 的 `get_raw_config()`，不要在其他模組自行解析 TOML。
+- 讀取共用系統設定時，使用 `get_system_config()`，不要直接操作 `config["system"]`。
+- 讀取 dataset 設定時，使用 `get_dataset_config()`，不要在各模組重複組 URL 與路徑。
+- 若同時需要 system 與 dataset 設定，優先共用同一份 `config_path`，避免混用不同設定來源。
+- 新功能若需要設定值，優先擴充 `SystemConfig` / `DatasetConfig`，再由呼叫端使用，不要散落字典存取。
+
 ## Python 實作規範
 
 - 優先使用標準函式庫，除非真的有必要再引入第三方套件。

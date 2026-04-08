@@ -12,9 +12,8 @@ PARENT_DIR = Path(__file__).resolve().parents[1]
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from init import load_opendata_config
-from twse_fetcher import request_json, resolve_target, run_fetch
-from twse_importer import create_import_target, run_import
+from twse_fetcher import OpenDataTarget, initialize_fetch_runtime, request_json, resolve_target, run_fetch
+from twse_importer import ImportTarget, create_import_target, run_import, build_parser as build_import_parser
 
 
 FIELD_MAPPING = {
@@ -49,97 +48,81 @@ FIELD_MAPPING = {
     "備註": "remarks",
 }
 
-DEFAULT_FETCH_TARGET = resolve_target(
-    dataset_name="fund",
-    default_api_endpoint="/opendata/t187ap47_L",
-    default_schema_path="database/init_fund.sql",
-    default_table_name="fund_basic",
-    default_json_name="fund.json",
-    description="抓取 TWSE 基金基本資料彙總表 OpenAPI",
-)
+DATASET_NAME = "fund"
+DEFAULT_API_ENDPOINT = "/opendata/t187ap47_L"
+DEFAULT_SCHEMA_PATH = "database/init_fund.sql"
+DEFAULT_TABLE_NAME = "fund_basic"
+DEFAULT_JSON_NAME = "fund.json"
+FETCH_DESCRIPTION = "抓取 TWSE 基金基本資料彙總表 OpenAPI"
+IMPORT_DESCRIPTION = "初始化並匯入 TWSE 基金基本資料到 SQLite"
 
-DEFAULT_IMPORT_TARGET = create_import_target(
-    dataset_name="fund",
-    field_mapping=FIELD_MAPPING,
-    primary_key="fund_code",
-    description="初始化並匯入 TWSE 基金基本資料到 SQLite",
-    default_api_endpoint="/opendata/t187ap47_L",
-    default_schema_path="database/init_fund.sql",
-    default_table_name="fund_basic",
-    default_json_name="fund.json",
-)
+
+def build_fetch_target(
+    config_path: Path | None = None,
+    api_url: str | None = None,
+    output_path: Path | None = None,
+) -> OpenDataTarget:
+    return resolve_target(
+        config_path,
+        dataset_name=DATASET_NAME,
+        default_api_endpoint=DEFAULT_API_ENDPOINT,
+        default_schema_path=DEFAULT_SCHEMA_PATH,
+        default_table_name=DEFAULT_TABLE_NAME,
+        default_json_name=DEFAULT_JSON_NAME,
+        api_url=api_url,
+        output_path=output_path,
+        description=FETCH_DESCRIPTION,
+    )
+
+
+def build_import_target(config_path: Path | None = None) -> ImportTarget:
+    return create_import_target(
+        dataset_name=DATASET_NAME,
+        field_mapping=FIELD_MAPPING,
+        primary_key="fund_code",
+        description=IMPORT_DESCRIPTION,
+        default_api_endpoint=DEFAULT_API_ENDPOINT,
+        default_schema_path=DEFAULT_SCHEMA_PATH,
+        default_table_name=DEFAULT_TABLE_NAME,
+        default_json_name=DEFAULT_JSON_NAME,
+        config_path=config_path,
+    )
 
 
 def fetch_fund(
     api_url: str | None = None,
     timeout: int = 30,
     config_path: Path | None = None,
+    debug_enabled: bool | None = None,
 ) -> list[dict[str, Any]]:
-    resolved_api_url = api_url or DEFAULT_FETCH_TARGET.api_url
-    data = request_json(resolved_api_url, timeout=timeout, config_path=config_path)
+    resolved_api_url = api_url or build_fetch_target(config_path).api_url
+    effective_debug = debug_enabled
+    if effective_debug is None:
+        effective_debug = initialize_fetch_runtime(config_path)
+
+    data = request_json(resolved_api_url, timeout=timeout, debug_enabled=effective_debug)
     if not isinstance(data, list):
         raise ValueError("TWSE API 回傳格式不是陣列")
     return data
 
 
 def build_parser() -> argparse.ArgumentParser:
-    default_open_data_config = load_opendata_config()
-    parser = argparse.ArgumentParser(description="TWSE 基金資料工具")
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=default_open_data_config.config_path,
-        help="config.toml 路徑",
-    )
+    parser = build_import_parser("TWSE 基金資料工具")
     parser.add_argument(
         "--api-url",
-        default=DEFAULT_FETCH_TARGET.api_url,
+        default=None,
         help="OpenAPI 完整 URL",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=DEFAULT_FETCH_TARGET.output_path,
+        default=None,
         help="輸出 JSON 檔案路徑",
-    )
-    parser.add_argument(
-        "--db-path",
-        type=Path,
-        default=default_open_data_config.db_path,
-        help="SQLite 資料庫檔案路徑",
-    )
-    parser.add_argument(
-        "--schema-path",
-        type=Path,
-        default=DEFAULT_IMPORT_TARGET.schema_path,
-        help="初始化 SQL 檔案路徑",
-    )
-    parser.add_argument(
-        "--input-json",
-        type=Path,
-        default=DEFAULT_IMPORT_TARGET.json_path,
-        help="來源 JSON 檔案路徑",
     )
     parser.add_argument(
         "--fetch-json",
         action="store_true",
         help="只抓 API 並輸出 JSON，不做資料庫匯入",
-    )
-    parser.add_argument(
-        "--fetch",
-        action="store_true",
-        help="直接從 TWSE OpenAPI 抓資料並匯入 SQLite",
-    )
-    parser.add_argument(
-        "--init-schema",
-        action="store_true",
-        help="只初始化 SQLite schema，不匯入資料",
-    )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=30,
-        help="HTTP timeout 秒數",
     )
     return parser
 
@@ -148,23 +131,19 @@ def main() -> None:
     args = build_parser().parse_args()
 
     if args.fetch_json:
-        target = resolve_target(
-            args.config,
-            dataset_name="fund",
-            default_api_endpoint="/opendata/t187ap47_L",
-            default_schema_path="database/init_fund.sql",
-            default_table_name="fund_basic",
-            default_json_name="fund.json",
-            api_url=args.api_url,
-            output_path=args.output,
-            description=DEFAULT_FETCH_TARGET.description,
+        debug_enabled = initialize_fetch_runtime(args.config)
+        target = build_fetch_target(args.config, api_url=args.api_url, output_path=args.output)
+        data, saved_path = run_fetch(
+            target,
+            timeout=args.timeout,
+            config_path=args.config,
+            debug_enabled=debug_enabled,
         )
-        data, saved_path = run_fetch(target, timeout=args.timeout, config_path=args.config)
         print(f"fetched {len(data)} rows")
         print(f"saved to {saved_path}")
         return
 
-    imported, db_path = run_import(args, DEFAULT_IMPORT_TARGET, fetch_fund)
+    imported, db_path = run_import(args, build_import_target(args.config), fetch_fund)
     if args.init_schema:
         print(f"initialized schema at {db_path}")
         return
