@@ -12,7 +12,7 @@ PARENT_DIR = Path(__file__).resolve().parents[1]
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from twse_fetcher import initialize_fetch_runtime, request_json, resolve_target, run_fetch
+from twse_fetcher import OpenDataTarget, initialize_fetch_runtime, request_json, resolve_target, run_fetch
 from twse_importer import ImportTarget, create_import_target, run_import, build_parser as build_import_parser
 
 
@@ -61,7 +61,7 @@ def build_fetch_target(
     config_path: Path | None = None,
     api_url: str | None = None,
     output_path: Path | None = None,
-) -> Any:
+) -> OpenDataTarget:
     return resolve_target(
         config_path,
         dataset_name=DATASET_NAME,

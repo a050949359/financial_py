@@ -204,7 +204,6 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
             if args.init_schema:
                 return 0, db_path
 
-            started_at = perf_counter()
             rows = (
                 fetch_rows(
                     api_url=dataset_config.api_url,
