@@ -20,9 +20,9 @@ if str(PARENT_DIR) not in sys.path:
 from init import get_dataset_config, get_system_config, setup_logging
 
 
-DEFAULT_CONFIG = get_system_config()
 DEFAULT_BASE_URL = "https://openapi.twse.com.tw/v1"
 DEFAULT_DESCRIPTION = "抓取 TWSE OpenAPI"
+DEFAULT_OUTPUT_PATH = Path("OpenData/opendata.json")
 LOGGER = logging.getLogger(__name__)
 
 
@@ -176,14 +176,14 @@ def run_fetch(
 def build_parser(default_target: OpenDataTarget | None = None) -> argparse.ArgumentParser:
     target = default_target or create_target(
         DEFAULT_BASE_URL,
-        DEFAULT_CONFIG.project_root / "OpenData" / "opendata.json",
+        DEFAULT_OUTPUT_PATH,
         DEFAULT_DESCRIPTION,
     )
     parser = argparse.ArgumentParser(description=target.description)
     parser.add_argument(
         "--config",
         type=Path,
-        default=DEFAULT_CONFIG.config_path,
+        default=None,
         help="config.toml 路徑",
     )
     parser.add_argument(

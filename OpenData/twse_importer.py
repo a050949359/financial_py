@@ -74,31 +74,30 @@ def create_import_target(
     )
 
 
-def build_parser(default_target: ImportTarget) -> argparse.ArgumentParser:
-    default_system_config = get_system_config()
-    parser = argparse.ArgumentParser(description=default_target.description)
+def build_parser(description: str) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "--config",
         type=Path,
-        default=default_system_config.config_path,
+        default=None,
         help="config.toml 路徑",
     )
     parser.add_argument(
         "--db-path",
         type=Path,
-        default=default_system_config.db_path,
+        default=None,
         help="SQLite 資料庫檔案路徑",
     )
     parser.add_argument(
         "--schema-path",
         type=Path,
-        default=default_target.schema_path,
+        default=None,
         help="初始化 SQL 檔案路徑",
     )
     parser.add_argument(
         "--input-json",
         type=Path,
-        default=default_target.json_path,
+        default=None,
         help="來源 JSON 檔案路徑",
     )
     parser.add_argument(
@@ -122,11 +121,7 @@ def build_parser(default_target: ImportTarget) -> argparse.ArgumentParser:
 
 def init_database(connection: sqlite3.Connection, schema_path: Path) -> None:
     sql = schema_path.read_text(encoding="utf-8")
-    try:
-        connection.executescript(sql)
-    except sqlite3.Error:
-        LOGGER.exception("SQLite schema 初始化失敗: schema_path=%s", schema_path)
-        raise
+    connection.executescript(sql)
 
 
 def load_rows(input_json: Path) -> list[dict[str, Any]]:
@@ -171,19 +166,10 @@ def upsert_rows(
     if not normalized_rows:
         return 0
 
-    try:
-        connection.executemany(
-            build_upsert_sql(table_name, insert_columns, primary_key),
-            normalized_rows,
-        )
-    except sqlite3.Error:
-        LOGGER.exception(
-            "SQLite 資料匯入失敗: table=%s rows=%s primary_key=%s",
-            table_name,
-            len(normalized_rows),
-            primary_key,
-        )
-        raise
+    connection.executemany(
+        build_upsert_sql(table_name, insert_columns, primary_key),
+        normalized_rows,
+    )
 
     return len(normalized_rows)
 
@@ -200,13 +186,9 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
         default_json_name=target.default_json_name,
     )
 
-    default_db_path = get_system_config().db_path
-    default_schema_path = target.schema_path
-    default_json_path = target.json_path
-
-    db_path = args.db_path if args.db_path != default_db_path else system_config.db_path
-    schema_path = args.schema_path if args.schema_path != default_schema_path else dataset_config.schema_path
-    input_json = args.input_json if args.input_json != default_json_path else dataset_config.json_path
+    db_path = args.db_path or system_config.db_path
+    schema_path = args.schema_path or dataset_config.schema_path
+    input_json = args.input_json or dataset_config.json_path
 
     if db_path == system_config.db_path:
         create_sqlite_database_file(args.config)
