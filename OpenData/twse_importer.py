@@ -8,6 +8,7 @@ import json
 import logging
 from pathlib import Path
 import sqlite3
+from time import perf_counter
 import sys
 from typing import Any, Callable, Iterable
 
@@ -221,6 +222,7 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
             if args.init_schema:
                 return 0, db_path
 
+            started_at = perf_counter()
             rows = (
                 fetch_rows(api_url=dataset_config.api_url, timeout=args.timeout, config_path=args.config)
                 if args.fetch
@@ -235,6 +237,16 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                 primary_key=target.primary_key,
             )
             connection.commit()
+
+            if open_data_config.debug:
+                elapsed_seconds = perf_counter() - started_at
+                LOGGER.info(
+                    "SQLite import finished: dataset=%s table=%s rows=%s elapsed_seconds=%.3f",
+                    target.dataset_name,
+                    dataset_config.table_name,
+                    imported,
+                    elapsed_seconds,
+                )
     except sqlite3.Error:
         LOGGER.exception(
             "SQLite 匯入流程失敗: dataset=%s db_path=%s schema_path=%s input_json=%s",

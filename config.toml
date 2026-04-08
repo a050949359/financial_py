@@ -4,6 +4,7 @@ db_path = "database/twse.db"
 source_dir = "Source"
 log_path = "log"
 log_retention_days = 30
+debug = false
 
 [company]
 api_endpoint = "/opendata/t187ap03_L"

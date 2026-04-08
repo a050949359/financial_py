@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import json
 import logging
 from pathlib import Path
+from time import perf_counter
 import sys
 from typing import Any
 from urllib.request import Request, urlopen
@@ -44,7 +45,9 @@ def request_json(
     headers: dict[str, str] | None = None,
     config_path: Path | None = None,
 ) -> Any:
-    setup_logging(config_path, LOGGER.name)
+    open_data_config = load_opendata_config(config_path)
+    setup_logging(open_data_config.config_path, LOGGER.name)
+    debug_enabled = open_data_config.debug
     request_headers = {
         "Accept": "application/json",
         "User-Agent": "py_shell-twse-opendata/1.0",
@@ -53,13 +56,36 @@ def request_json(
         request_headers.update(headers)
 
     request = Request(url, headers=request_headers)
+    started_at = perf_counter()
     try:
         with urlopen(request, timeout=timeout) as response:
             payload = response.read().decode("utf-8")
 
-        return json.loads(payload)
+        result = json.loads(payload)
+        if debug_enabled:
+            elapsed_seconds = perf_counter() - started_at
+            LOGGER.info(
+                "TWSE API query finished: status=success url=%s timeout=%s elapsed_seconds=%.3f",
+                url,
+                timeout,
+                elapsed_seconds,
+            )
+        return result
     except Exception:
-        LOGGER.exception("TWSE API 呼叫失敗: url=%s timeout=%s", url, timeout)
+        elapsed_seconds = perf_counter() - started_at
+        if debug_enabled:
+            LOGGER.info(
+                "TWSE API query finished: status=failed url=%s timeout=%s elapsed_seconds=%.3f",
+                url,
+                timeout,
+                elapsed_seconds,
+            )
+        LOGGER.exception(
+            "TWSE API 呼叫失敗: url=%s timeout=%s elapsed_seconds=%.3f",
+            url,
+            timeout,
+            elapsed_seconds,
+        )
         raise
 
 

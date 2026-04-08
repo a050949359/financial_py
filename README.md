@@ -66,6 +66,7 @@ db_path = "OpenData/database/twse.db"
 source_dir = "Source"
 log_path = "log"
 log_retention_days = 30
+debug = false
 
 [company]
 api_endpoint = "/opendata/t187ap03_L"
@@ -85,5 +86,6 @@ json_name = "fund.json"
 - log 檔名格式為 YYYYMMDD.log
 - 所有錯誤寫入同一天的同一份 log
 - 目前只記錄 error 等級
+- 當 `debug = true` 時，會額外記錄抓取/匯入的耗時與結果摘要
 - `make clean-log` 依檔案 mtime 與 `log_retention_days` 清理過期 log
 - `log_retention_days = 0` 代表不清理任何 log

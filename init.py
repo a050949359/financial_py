@@ -26,6 +26,7 @@ class OpenDataConfig:
     source_dir: Path
     log_path: Path
     log_retention_days: int
+    debug: bool
 
 
 def cleanup_old_logs(log_dir: Path, retention_days: int) -> int:
@@ -54,6 +55,7 @@ def setup_logging(
     logger_name: str | None = None,
 ) -> Path:
     config = load_opendata_config(config_path)
+    log_level = logging.INFO if config.debug else logging.ERROR
     config.log_path.mkdir(parents=True, exist_ok=True)
     log_file_name = f"{date.today():%Y%m%d}.log"
     log_file_path = config.log_path / log_file_name
@@ -62,21 +64,23 @@ def setup_logging(
     target_logger = logging.getLogger(logger_name)
     for handler in list(target_logger.handlers):
         if isinstance(handler, logging.FileHandler) and Path(handler.baseFilename).resolve() == resolved_log_file_path:
+            handler.setLevel(log_level)
+            target_logger.setLevel(log_level)
             return log_file_path
         if isinstance(handler, logging.FileHandler):
             target_logger.removeHandler(handler)
             handler.close()
 
     file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
-    file_handler.setLevel(logging.ERROR)
+    file_handler.setLevel(log_level)
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
     )
     target_logger.addHandler(file_handler)
     target_logger.propagate = False
 
-    if target_logger.level == logging.NOTSET or target_logger.level > logging.ERROR:
-        target_logger.setLevel(logging.ERROR)
+    if target_logger.level == logging.NOTSET or target_logger.level > log_level:
+        target_logger.setLevel(log_level)
 
     return log_file_path
 
@@ -124,6 +128,18 @@ def _load_system_config(config: dict) -> dict:
     return config.get("system", {})
 
 
+def _parse_bool(value: object, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return default
+
+
 def load_opendata_config(config_path: Path | None = None) -> OpenDataConfig:
     resolved_config_path = (config_path or find_config_path()).resolve()
     project_root = resolved_config_path.parent
@@ -155,6 +171,7 @@ def load_opendata_config(config_path: Path | None = None) -> OpenDataConfig:
             "log",
         ),
         log_retention_days=int(open_data_config.get("log_retention_days", 30)),
+        debug=_parse_bool(open_data_config.get("debug", False)),
     )
 
 
