@@ -13,7 +13,13 @@ FETCH_ARGS += $(if $(TIMEOUT),--timeout $(TIMEOUT),)
 FETCH_ARGS += $(if $(OUTPUT),--output $(OUTPUT),)
 FETCH_ARGS += $(if $(API_URL),--api-url $(API_URL),)
 
-.PHONY: help init-db init-company-schema init-fund-schema init-day-reports-schema init-month-reports-schema init-year-reports-schema fetch-company fetch-fund fetch-day-reports fetch-month-reports fetch-year-reports import-company import-fund import-day-reports import-month-reports import-year-reports sync-company sync-fund sync-day-reports sync-month-reports sync-year-reports clean-company-json clean-fund-json clean-day-reports-json clean-month-reports-json clean-year-reports-json clean-log
+.PHONY: help init-db init-company-schema init-fund-schema \
+	init-day-reports-schema init-month-reports-schema init-year-reports-schema \
+	fetch-company fetch-fund fetch-day-reports fetch-month-reports fetch-year-reports \
+	import-company import-fund import-day-reports import-month-reports import-year-reports \
+	sync-company sync-fund sync-day-reports sync-month-reports sync-year-reports \
+	clean-company-json clean-fund-json clean-day-reports-json \
+	clean-month-reports-json clean-year-reports-json clean-log
 .SILENT:
 
 help:
