@@ -166,9 +166,12 @@ def build_upsert_sql(table_name: str, insert_columns: list[str], conflict_column
     )
     columns = ", ".join(insert_columns)
     conflict_target = ", ".join(conflict_columns)
+    update_clause = "imported_at = CURRENT_TIMESTAMP"
+    if assignments:
+        update_clause = f"{assignments}, {update_clause}"
     return (
         f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) "
-        f"ON CONFLICT({conflict_target}) DO UPDATE SET {assignments}, imported_at = CURRENT_TIMESTAMP"
+        f"ON CONFLICT({conflict_target}) DO UPDATE SET {update_clause}"
     )
 
 
