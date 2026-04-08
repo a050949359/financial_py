@@ -8,6 +8,7 @@
 - Source/: 下載回來的原始 JSON
 - database/: SQLite schema SQL
 - log/: 執行過程中的錯誤 log
+- utils/: 共用工具模組（例如 log 處理）
 - init.py: 共用設定讀取、SQLite db 檔初始化、log 清理入口
 - config.toml: 專案設定
 - Makefile: 常用操作指令入口

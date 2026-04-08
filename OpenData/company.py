@@ -12,8 +12,8 @@ PARENT_DIR = Path(__file__).resolve().parents[1]
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from init import load_opendata_config
-from twse_fetcher import request_json, resolve_target, run_fetch
+from init import get_system_config
+from twse_fetcher import initialize_fetch_runtime, request_json, resolve_target, run_fetch
 from twse_importer import create_import_target, run_import
 
 
@@ -78,21 +78,26 @@ def fetch_company(
     api_url: str | None = None,
     timeout: int = 30,
     config_path: Path | None = None,
+    debug_enabled: bool | None = None,
 ) -> list[dict[str, Any]]:
     resolved_api_url = api_url or DEFAULT_FETCH_TARGET.api_url
-    data = request_json(resolved_api_url, timeout=timeout, config_path=config_path)
+    effective_debug = debug_enabled
+    if effective_debug is None:
+        effective_debug = initialize_fetch_runtime(config_path)
+
+    data = request_json(resolved_api_url, timeout=timeout, debug_enabled=effective_debug)
     if not isinstance(data, list):
         raise ValueError("TWSE API 回傳格式不是陣列")
     return data
 
 
 def build_parser() -> argparse.ArgumentParser:
-    default_open_data_config = load_opendata_config()
+    default_system_config = get_system_config()
     parser = argparse.ArgumentParser(description="TWSE 上市公司資料工具")
     parser.add_argument(
         "--config",
         type=Path,
-        default=default_open_data_config.config_path,
+        default=default_system_config.config_path,
         help="config.toml 路徑",
     )
     parser.add_argument(
@@ -109,7 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db-path",
         type=Path,
-        default=default_open_data_config.db_path,
+        default=default_system_config.db_path,
         help="SQLite 資料庫檔案路徑",
     )
     parser.add_argument(
@@ -150,6 +155,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
+    debug_enabled = initialize_fetch_runtime(args.config)
 
     if args.fetch_json:
         target = resolve_target(
@@ -163,7 +169,12 @@ def main() -> None:
             output_path=args.output,
             description=DEFAULT_FETCH_TARGET.description,
         )
-        data, saved_path = run_fetch(target, timeout=args.timeout, config_path=args.config)
+        data, saved_path = run_fetch(
+            target,
+            timeout=args.timeout,
+            config_path=args.config,
+            debug_enabled=debug_enabled,
+        )
         print(f"fetched {len(data)} rows")
         print(f"saved to {saved_path}")
         return
