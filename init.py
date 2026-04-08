@@ -102,6 +102,7 @@ def _load_config_dict(resolved_config_path: Path) -> dict:
         return tomllib.load(file_handle)
 
 
+@lru_cache(maxsize=16)
 def _resolve_config_path(config_path: Path | None = None) -> Path:
     return (config_path or find_config_path()).resolve()
 

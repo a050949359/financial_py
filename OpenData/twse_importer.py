@@ -216,6 +216,7 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                 else load_rows(input_json)
             )
 
+            started_at = perf_counter()
             imported = upsert_rows(
                 connection,
                 rows,
