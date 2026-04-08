@@ -243,11 +243,12 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                     imported,
                     elapsed_seconds,
                 )
-    except sqlite3.Error:
+    except Exception as exc:
         LOGGER.exception(
-            "SQLite 匯入流程失敗: dataset=%s stage=%s table=%s rows_count=%s db_path=%s schema_path=%s input_json=%s",
+            "匯入流程失敗: dataset=%s stage=%s error_type=%s table=%s rows_count=%s db_path=%s schema_path=%s input_json=%s",
             target.dataset_name,
             stage,
+            type(exc).__name__,
             dataset_config.table_name,
             rows_count,
             db_path,
