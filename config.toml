@@ -1,6 +1,6 @@
-[opendata]
+[system]
 db_driver = "sqlite"
-db_path = "OpenData/database/twse.db"
+db_path = "database/twse.db"
 source_dir = "Source"
 log_path = "log"
 log_retention_days = 30

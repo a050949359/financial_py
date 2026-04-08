@@ -14,6 +14,7 @@ FETCH_ARGS += $(if $(OUTPUT),--output $(OUTPUT),)
 FETCH_ARGS += $(if $(API_URL),--api-url $(API_URL),)
 
 .PHONY: help init-db init-company-schema init-fund-schema fetch-company fetch-fund import-company import-fund sync-company sync-fund clean-company-json clean-fund-json clean-log
+.SILENT:
 
 help:
 	@echo "make init-db    # 依 config 建立空的 SQLite db 檔案"

@@ -27,7 +27,7 @@
 
 - 所有可調整路徑都應優先從 config.toml 讀取。
 - 不要把專案路徑硬編碼在 company.py 或 fund.py。
-- [opendata] 只放共用設定，例如 db_path、source_dir、log_path、log_retention_days。
+- [system] 只放共用設定，例如 db_path、source_dir、log_path、log_retention_days。
 - dataset 專屬設定只放在 [company] 或 [fund]。
 
 ## Python 實作規範

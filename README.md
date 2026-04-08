@@ -60,7 +60,7 @@ make fetch-fund CONFIG=/path/to/config.toml
 設定檔位於 config.toml。
 
 ```toml
-[opendata]
+[system]
 db_driver = "sqlite"
 db_path = "OpenData/database/twse.db"
 source_dir = "Source"

@@ -120,6 +120,10 @@ def _resolve_path(project_root: Path, value: str, fallback: str) -> Path:
     return raw if raw.is_absolute() else project_root / raw
 
 
+def _load_system_config(config: dict) -> dict:
+    return config.get("system", {})
+
+
 def load_opendata_config(config_path: Path | None = None) -> OpenDataConfig:
     resolved_config_path = (config_path or find_config_path()).resolve()
     project_root = resolved_config_path.parent
@@ -127,7 +131,7 @@ def load_opendata_config(config_path: Path | None = None) -> OpenDataConfig:
     with resolved_config_path.open("rb") as file_handle:
         config = tomllib.load(file_handle)
 
-    open_data_config = config.get("opendata", {})
+    open_data_config = _load_system_config(config)
 
     db_driver = open_data_config.get("db_driver", "sqlite")
 
@@ -169,7 +173,7 @@ def load_dataset_config(
     with resolved_config_path.open("rb") as file_handle:
         config = tomllib.load(file_handle)
 
-    open_data_config = config.get("opendata", {})
+    open_data_config = _load_system_config(config)
     dataset_config = config.get(dataset_name, {})
     api_endpoint = dataset_config.get("api_endpoint", default_api_endpoint)
     if not api_endpoint.startswith("/"):
