@@ -46,6 +46,8 @@
 	- API 呼叫與匯入失敗會寫入每日 log
 	- 可依 log_retention_days 清理過期 log
 
+dataset 名稱使用 `day_report`、`month_report`、`year_report`；對應的 SQLite table 名稱則是 `day_reports`、`month_reports`、`year_reports`。
+
 ## 主要指令
 
 ```bash

@@ -230,9 +230,6 @@ def run_import(args: argparse.Namespace, target: ImportTarget) -> tuple[int, Pat
                 table_name=dataset_config.table_name,
             )
 
-            stage = "commit"
-            connection.commit()
-
             if system_config.debug:
                 elapsed_seconds = perf_counter() - started_at
                 LOGGER.info(
