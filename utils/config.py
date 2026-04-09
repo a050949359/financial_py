@@ -17,7 +17,6 @@ class ConfigValidationError(ValueError):
 
 @dataclass(frozen=True)
 class SystemConfig:
-    config_path: Path
     project_root: Path
     db_driver: str
     db_path: Path
@@ -30,7 +29,6 @@ class SystemConfig:
 @dataclass(frozen=True)
 class DatasetConfig:
     name: str
-    config_path: Path
     project_root: Path
     api_endpoint: str
     api_url: str
@@ -98,25 +96,10 @@ def _resolve_dataset_defaults(dataset_name: str) -> DatasetDefaults:
     )
 
 
-def find_config_path(start_path: Path | None = None) -> Path:
-    if DEFAULT_CONFIG_PATH.exists():
-        return DEFAULT_CONFIG_PATH
-
-    start = (start_path or Path(__file__)).resolve()
-    search_roots = [start.parent] if start.is_file() else [start]
-    search_roots.append(Path.cwd().resolve())
-
-    for root in search_roots:
-        current = root
-        while True:
-            candidate = current / CONFIG_FILE_NAME
-            if candidate.exists():
-                return candidate
-            if current.parent == current:
-                break
-            current = current.parent
-
-    raise FileNotFoundError(f"找不到 {CONFIG_FILE_NAME}")
+def get_config_path() -> Path:
+    if DEFAULT_CONFIG_PATH.is_file():
+        return DEFAULT_CONFIG_PATH.resolve()
+    raise FileNotFoundError(f"找不到 {DEFAULT_CONFIG_PATH}")
 
 
 def _resolve_path(project_root: Path, value: str, fallback: str) -> Path:
@@ -152,20 +135,15 @@ def _load_config_dict(resolved_config_path: Path) -> dict:
         return tomllib.load(file_handle)
 
 
-@lru_cache(maxsize=16)
-def _resolve_config_path(config_path: Path | None = None) -> Path:
-    return (config_path or find_config_path()).resolve()
-
-
-def get_raw_config(config_path: Path | None = None) -> dict:
-    resolved_config_path = _resolve_config_path(config_path)
+def get_raw_config() -> dict:
+    resolved_config_path = get_config_path()
     return _load_config_dict(resolved_config_path)
 
 
-def get_system_config(config_path: Path | None = None) -> SystemConfig:
-    resolved_config_path = _resolve_config_path(config_path)
+def get_system_config() -> SystemConfig:
+    resolved_config_path = get_config_path()
     project_root = resolved_config_path.parent
-    config = get_raw_config(resolved_config_path)
+    config = get_raw_config()
 
     system_config = _load_system_config(config)
     db_driver = _require_non_empty_text(
@@ -174,7 +152,6 @@ def get_system_config(config_path: Path | None = None) -> SystemConfig:
     )
 
     return SystemConfig(
-        config_path=resolved_config_path,
         project_root=project_root,
         db_driver=db_driver,
         db_path=_resolve_path(
@@ -199,11 +176,10 @@ def get_system_config(config_path: Path | None = None) -> SystemConfig:
 
 def get_dataset_config(
     dataset_name: str,
-    config_path: Path | None = None,
 ) -> DatasetConfig:
-    resolved_config_path = _resolve_config_path(config_path)
+    resolved_config_path = get_config_path()
     project_root = resolved_config_path.parent
-    config = get_raw_config(resolved_config_path)
+    config = get_raw_config()
 
     system_config = _load_system_config(config)
     dataset_config = config.get(dataset_name, {})
@@ -236,7 +212,6 @@ def get_dataset_config(
 
     return DatasetConfig(
         name=dataset_name,
-        config_path=resolved_config_path,
         project_root=project_root,
         api_endpoint=api_endpoint,
         api_url=f"https://openapi.twse.com.tw/v1{api_endpoint}",
@@ -247,12 +222,12 @@ def get_dataset_config(
     )
 
 
-def validate_config(config_path: Path | None = None, dataset_name: str | None = None) -> None:
-    resolved_config_path = _resolve_config_path(config_path)
+def validate_config(dataset_name: str | None = None) -> None:
+    resolved_config_path = get_config_path()
 
     try:
-        get_raw_config(resolved_config_path)
-        system_config = get_system_config(resolved_config_path)
+        get_raw_config()
+        system_config = get_system_config()
     except Exception as exc:
         raise ConfigValidationError(
             f"config 驗證失敗: {resolved_config_path}: {exc}"
@@ -271,7 +246,7 @@ def validate_config(config_path: Path | None = None, dataset_name: str | None = 
     target_datasets = (dataset_name,) if dataset_name else tuple(registry)
     for current_dataset in target_datasets:
         try:
-            dataset = get_dataset_config(current_dataset, resolved_config_path)
+            dataset = get_dataset_config(current_dataset)
         except Exception as exc:
             raise ConfigValidationError(
                 f"config 驗證失敗: dataset={current_dataset}: {exc}"
@@ -283,6 +258,6 @@ def validate_config(config_path: Path | None = None, dataset_name: str | None = 
             )
 
 
-def get_dataset_json_path(dataset_name: str, config_path: Path | None = None) -> Path:
-    validate_config(config_path, dataset_name)
-    return get_dataset_config(dataset_name, config_path).json_path
+def get_dataset_json_path(dataset_name: str) -> Path:
+    validate_config(dataset_name)
+    return get_dataset_config(dataset_name).json_path

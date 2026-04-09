@@ -20,7 +20,6 @@ if str(PARENT_DIR) not in sys.path:
 from init import create_sqlite_database_file, get_dataset_config, get_system_config, setup_logging
 
 
-FetchRows = Callable[..., list[dict[str, Any]]]
 RowTransform = Callable[[dict[str, Any]], dict[str, str]]
 LOGGER = logging.getLogger(__name__)
 
@@ -46,14 +45,13 @@ def create_import_target(
     description: str,
     insert_columns: tuple[str, ...] | None = None,
     row_transform: RowTransform | None = None,
-    config_path: Path | None = None,
 ) -> ImportTarget:
     if field_mapping is None and insert_columns is None:
         raise ValueError("field_mapping 與 insert_columns 不能同時省略")
     if not conflict_columns:
         raise ValueError("conflict_columns 不能為空")
 
-    dataset_config = get_dataset_config(dataset_name, config_path)
+    dataset_config = get_dataset_config(dataset_name)
     return ImportTarget(
         dataset_name=dataset_name,
         schema_path=dataset_config.schema_path,
@@ -69,12 +67,6 @@ def create_import_target(
 
 def build_parser(description: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=None,
-        help="config.toml 路徑",
-    )
     parser.add_argument(
         "--db-path",
         type=Path,
@@ -94,20 +86,9 @@ def build_parser(description: str) -> argparse.ArgumentParser:
         help="來源 JSON 檔案路徑",
     )
     parser.add_argument(
-        "--fetch",
-        action="store_true",
-        help="直接從 TWSE OpenAPI 抓資料，不讀本地 JSON",
-    )
-    parser.add_argument(
         "--init-schema",
         action="store_true",
         help="只初始化 SQLite schema，不匯入資料",
-    )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=30,
-        help="當使用 --fetch 時的 HTTP timeout 秒數",
     )
     return parser
 
@@ -185,21 +166,45 @@ def upsert_rows(
     return len(normalized_rows)
 
 
-def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: FetchRows) -> tuple[int, Path]:
-    setup_logging(args.config, LOGGER.name)
-    system_config = get_system_config(args.config)
-    dataset_config = get_dataset_config(target.dataset_name, args.config)
+def _prepare_import_context(args: argparse.Namespace, dataset_name: str) -> tuple[Any, Any, Path, Path, Path]:
+    setup_logging(LOGGER.name)
+    system_config = get_system_config()
+    dataset_config = get_dataset_config(dataset_name)
 
     db_path = args.db_path or system_config.db_path
     schema_path = args.schema_path or dataset_config.schema_path
     input_json = args.input_json or dataset_config.json_path
 
     if db_path.resolve() == system_config.db_path.resolve():
-        create_sqlite_database_file(args.config)
+        create_sqlite_database_file()
     else:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(db_path):
             pass
+
+    return system_config, dataset_config, db_path, schema_path, input_json
+
+
+def _run_import_rows(
+    connection: sqlite3.Connection,
+    rows: list[dict[str, Any]],
+    *,
+    target: ImportTarget,
+    table_name: str,
+) -> int:
+    return upsert_rows(
+        connection,
+        rows,
+        field_mapping=target.field_mapping,
+        insert_columns=target.insert_columns,
+        table_name=table_name,
+        conflict_columns=target.conflict_columns,
+        row_transform=target.row_transform,
+    )
+
+
+def run_import(args: argparse.Namespace, target: ImportTarget) -> tuple[int, Path]:
+    system_config, dataset_config, db_path, schema_path, input_json = _prepare_import_context(args, target.dataset_name)
 
     stage = "open_connection"
     rows_count = 0
@@ -213,28 +218,65 @@ def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: Fetch
                 return 0, db_path
 
             stage = "load_rows"
-            rows = (
-                fetch_rows(
-                    api_url=dataset_config.api_url,
-                    timeout=args.timeout,
-                    config_path=args.config,
-                    debug_enabled=system_config.debug,
-                )
-                if args.fetch
-                else load_rows(input_json)
-            )
+            rows = load_rows(input_json)
             rows_count = len(rows)
 
             stage = "upsert_rows"
             started_at = perf_counter()
-            imported = upsert_rows(
+            imported = _run_import_rows(
                 connection,
                 rows,
-                field_mapping=target.field_mapping,
-                insert_columns=target.insert_columns,
+                target=target,
                 table_name=dataset_config.table_name,
-                conflict_columns=target.conflict_columns,
-                row_transform=target.row_transform,
+            )
+
+            if system_config.debug:
+                elapsed_seconds = perf_counter() - started_at
+                LOGGER.info(
+                    "SQLite import finished: dataset=%s table=%s rows=%s elapsed_seconds=%.3f",
+                    target.dataset_name,
+                    dataset_config.table_name,
+                    imported,
+                    elapsed_seconds,
+                )
+    except Exception as exc:
+        LOGGER.exception(
+            "匯入流程失敗: dataset=%s stage=%s error_type=%s table=%s rows_count=%s db_path=%s schema_path=%s input_json=%s",
+            target.dataset_name,
+            stage,
+            type(exc).__name__,
+            dataset_config.table_name,
+            rows_count,
+            db_path,
+            schema_path,
+            input_json,
+        )
+        raise
+
+    return imported, db_path
+
+
+def run_import_rows(args: argparse.Namespace, target: ImportTarget, rows: list[dict[str, Any]]) -> tuple[int, Path]:
+    system_config, dataset_config, db_path, schema_path, input_json = _prepare_import_context(args, target.dataset_name)
+
+    stage = "open_connection"
+    rows_count = len(rows)
+
+    try:
+        with sqlite3.connect(db_path) as connection:
+            stage = "init_schema"
+            init_database(connection, schema_path)
+
+            if args.init_schema:
+                return 0, db_path
+
+            stage = "upsert_rows"
+            started_at = perf_counter()
+            imported = _run_import_rows(
+                connection,
+                rows,
+                target=target,
+                table_name=dataset_config.table_name,
             )
 
             stage = "commit"
