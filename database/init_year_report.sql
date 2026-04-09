@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS year_reports (
     avg_closing_price TEXT,
     high_date TEXT,
     low_date TEXT,
-    payload_json TEXT NOT NULL,
     imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (company_code, report_period)
 );

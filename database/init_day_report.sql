@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS day_reports (
     lowest_price TEXT,
     closing_price TEXT,
     price_change TEXT,
-    payload_json TEXT NOT NULL,
     imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (company_code, report_period)
 );

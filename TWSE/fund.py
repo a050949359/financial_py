@@ -49,10 +49,6 @@ FIELD_MAPPING = {
 }
 
 DATASET_NAME = "fund"
-DEFAULT_API_ENDPOINT = "/opendata/t187ap47_L"
-DEFAULT_SCHEMA_PATH = "database/init_fund.sql"
-DEFAULT_TABLE_NAME = "funds"
-DEFAULT_JSON_NAME = "fund.json"
 FETCH_DESCRIPTION = "抓取 TWSE 基金基本資料彙總表 OpenAPI"
 IMPORT_DESCRIPTION = "初始化並匯入 TWSE 基金基本資料到 SQLite"
 
@@ -65,10 +61,6 @@ def build_fetch_target(
     return resolve_target(
         config_path,
         dataset_name=DATASET_NAME,
-        default_api_endpoint=DEFAULT_API_ENDPOINT,
-        default_schema_path=DEFAULT_SCHEMA_PATH,
-        default_table_name=DEFAULT_TABLE_NAME,
-        default_json_name=DEFAULT_JSON_NAME,
         api_url=api_url,
         output_path=output_path,
         description=FETCH_DESCRIPTION,
@@ -81,10 +73,6 @@ def build_import_target(config_path: Path | None = None) -> ImportTarget:
         field_mapping=FIELD_MAPPING,
         conflict_columns=("fund_code",),
         description=IMPORT_DESCRIPTION,
-        default_api_endpoint=DEFAULT_API_ENDPOINT,
-        default_schema_path=DEFAULT_SCHEMA_PATH,
-        default_table_name=DEFAULT_TABLE_NAME,
-        default_json_name=DEFAULT_JSON_NAME,
         config_path=config_path,
     )
 

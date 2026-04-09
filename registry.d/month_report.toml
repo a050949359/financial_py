@@ -1,0 +1,4 @@
+api_endpoint = "/exchangeReport/FMSRFK_ALL"
+schema_path = "database/init_month_report.sql"
+table_name = "month_reports"
+json_name = "month_report.json"

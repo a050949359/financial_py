@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 import sys
 from typing import Any
@@ -19,10 +18,6 @@ from core.importer import ImportTarget, create_import_target, normalize_value, r
 
 DATASET_NAME = "year_report"
 REPORT_TYPE = "year"
-DEFAULT_API_ENDPOINT = "/exchangeReport/FMNPTK_ALL"
-DEFAULT_SCHEMA_PATH = "database/init_year_report.sql"
-DEFAULT_TABLE_NAME = "year_reports"
-DEFAULT_JSON_NAME = "year_report.json"
 PERIOD_FIELD = "Year"
 FETCH_DESCRIPTION = "抓取 TWSE 上市證券年報成交資料 OpenAPI"
 IMPORT_DESCRIPTION = "初始化並匯入 TWSE 上市證券年報成交資料到 SQLite"
@@ -51,7 +46,6 @@ INSERT_COLUMNS = (
     "avg_closing_price",
     "high_date",
     "low_date",
-    "payload_json",
 )
 
 
@@ -63,10 +57,6 @@ def build_fetch_target(
     return resolve_target(
         config_path,
         dataset_name=DATASET_NAME,
-        default_api_endpoint=DEFAULT_API_ENDPOINT,
-        default_schema_path=DEFAULT_SCHEMA_PATH,
-        default_table_name=DEFAULT_TABLE_NAME,
-        default_json_name=DEFAULT_JSON_NAME,
         api_url=api_url,
         output_path=output_path,
         description=FETCH_DESCRIPTION,
@@ -103,7 +93,6 @@ def transform_year_report_row(row: dict[str, Any]) -> dict[str, str]:
         "avg_closing_price": normalize_value(row.get("AvgClosingPrice", "")),
         "high_date": normalize_value(row.get("HDate", "")),
         "low_date": normalize_value(row.get("LDate", "")),
-        "payload_json": json.dumps(row, ensure_ascii=False, separators=(",", ":")),
     }
 
 
@@ -115,10 +104,6 @@ def build_import_target(config_path: Path | None = None) -> ImportTarget:
         insert_columns=INSERT_COLUMNS,
         row_transform=transform_year_report_row,
         description=IMPORT_DESCRIPTION,
-        default_api_endpoint=DEFAULT_API_ENDPOINT,
-        default_schema_path=DEFAULT_SCHEMA_PATH,
-        default_table_name=DEFAULT_TABLE_NAME,
-        default_json_name=DEFAULT_JSON_NAME,
         config_path=config_path,
     )
 

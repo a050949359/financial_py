@@ -6,6 +6,7 @@
 
 - TWSE/: dataset 專屬流程腳本
 - core/fetcher.py / core/importer.py: 共用抓取與匯入模組
+- registry.d/: dataset 註冊表，每個 dataset 一個 TOML 檔
 - Source/: 下載回來的原始 JSON
 - database/: SQLite schema SQL
 - log/: 執行過程中的錯誤 log
@@ -39,6 +40,7 @@
 ## 主要指令
 
 ```bash
+make validate-config
 make init-db
 make init-company-schema
 make init-fund-schema
@@ -74,6 +76,7 @@ make fetch-company TIMEOUT=60
 make fetch-company OUTPUT=Source/company_custom.json
 make fetch-fund API_URL=https://openapi.twse.com.tw/v1/opendata/t187ap47_L
 make fetch-fund CONFIG=/path/to/config.toml
+make validate-config DATASET=company
 make fetch-day-reports OUTPUT=Source/day_report_custom.json
 make fetch-month-reports
 make fetch-year-reports
@@ -84,6 +87,17 @@ make sync-day-reports
 ## 設定檔
 
 設定檔位於 config.toml。
+
+dataset 預設註冊表位於 registry.d/，採一個 dataset 一個 TOML 檔的形式。
+
+可以先用下列指令驗證設定是否可用：
+
+```bash
+make validate-config
+make validate-config DATASET=company
+python3 init.py --config config.toml --validate-config
+python3 init.py --config config.toml --print-dataset-json-path company
+```
 
 ```toml
 [system]

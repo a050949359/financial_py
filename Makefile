@@ -7,13 +7,24 @@ CONFIG ?= $(CONFIG_FILE)
 TIMEOUT ?=
 OUTPUT ?=
 API_URL ?=
+DATASET ?=
 
 FETCH_ARGS := --config $(CONFIG)
 FETCH_ARGS += $(if $(TIMEOUT),--timeout $(TIMEOUT),)
 FETCH_ARGS += $(if $(OUTPUT),--output $(OUTPUT),)
 FETCH_ARGS += $(if $(API_URL),--api-url $(API_URL),)
 
-.PHONY: help init-db init-company-schema init-fund-schema \
+define dataset_json_path
+$(shell $(PYTHON) $(TWSE_DIR)/init.py --config $(CONFIG) --print-dataset-json-path $(1))
+endef
+
+COMPANY_JSON_PATH = $(call dataset_json_path,company)
+FUND_JSON_PATH = $(call dataset_json_path,fund)
+DAY_REPORT_JSON_PATH = $(call dataset_json_path,day_report)
+MONTH_REPORT_JSON_PATH = $(call dataset_json_path,month_report)
+YEAR_REPORT_JSON_PATH = $(call dataset_json_path,year_report)
+
+.PHONY: help validate-config init-db init-company-schema init-fund-schema \
 	init-day-reports-schema init-month-reports-schema init-year-reports-schema \
 	fetch-company fetch-fund fetch-day-reports fetch-month-reports fetch-year-reports \
 	import-company import-fund import-day-reports import-month-reports import-year-reports \
@@ -23,6 +34,7 @@ FETCH_ARGS += $(if $(API_URL),--api-url $(API_URL),)
 .SILENT:
 
 help:
+	@echo "make validate-config # 驗證 config，可帶 CONFIG 與 DATASET"
 	@echo "make init-db    # 依 config 建立空的 SQLite db 檔案"
 	@echo "make init-company-schema # 在既有 db 上建立公司 table/schema"
 	@echo "make init-fund-schema # 在既有 db 上建立基金 table/schema"
@@ -53,6 +65,10 @@ help:
 	@echo "example: make fetch-company TIMEOUT=60 OUTPUT=Source/company_custom.json"
 	@echo "example: make fetch-day-reports OUTPUT=Source/day_report_custom.json"
 	@echo "example: make sync-year-reports"
+	@echo "example: make validate-config DATASET=company"
+
+validate-config:
+	$(PYTHON) $(TWSE_DIR)/init.py --config $(CONFIG) --validate-config $(if $(DATASET),--dataset $(DATASET),)
 
 init-db:
 	$(PYTHON) $(TWSE_DIR)/init.py --config $(CONFIG)
@@ -88,36 +104,41 @@ init-year-reports-schema:
 	$(PYTHON) $(TWSE_MODULE_DIR)/year_reports.py --config $(CONFIG) --init-schema
 
 import-company:
-	@if [ ! -f "$(TWSE_DIR)/Source/listed_company.json" ]; then \
-		echo "Source/listed_company.json not found, running fetch-company first"; \
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=company
+	@if [ ! -f "$(COMPANY_JSON_PATH)" ]; then \
+		echo "$(COMPANY_JSON_PATH) not found, running fetch-company first"; \
 		$(MAKE) fetch-company CONFIG=$(CONFIG); \
 	fi
 	$(PYTHON) $(TWSE_MODULE_DIR)/company.py --config $(CONFIG)
 
 import-fund:
-	@if [ ! -f "$(TWSE_DIR)/Source/fund.json" ]; then \
-		echo "Source/fund.json not found, running fetch-fund first"; \
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=fund
+	@if [ ! -f "$(FUND_JSON_PATH)" ]; then \
+		echo "$(FUND_JSON_PATH) not found, running fetch-fund first"; \
 		$(MAKE) fetch-fund CONFIG=$(CONFIG); \
 	fi
 	$(PYTHON) $(TWSE_MODULE_DIR)/fund.py --config $(CONFIG)
 
 import-day-reports:
-	@if [ ! -f "$(TWSE_DIR)/Source/day_report.json" ]; then \
-		echo "Source/day_report.json not found, running fetch-day-reports first"; \
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=day_report
+	@if [ ! -f "$(DAY_REPORT_JSON_PATH)" ]; then \
+		echo "$(DAY_REPORT_JSON_PATH) not found, running fetch-day-reports first"; \
 		$(MAKE) fetch-day-reports CONFIG=$(CONFIG); \
 	fi
 	$(PYTHON) $(TWSE_MODULE_DIR)/day_reports.py --config $(CONFIG)
 
 import-month-reports:
-	@if [ ! -f "$(TWSE_DIR)/Source/month_report.json" ]; then \
-		echo "Source/month_report.json not found, running fetch-month-reports first"; \
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=month_report
+	@if [ ! -f "$(MONTH_REPORT_JSON_PATH)" ]; then \
+		echo "$(MONTH_REPORT_JSON_PATH) not found, running fetch-month-reports first"; \
 		$(MAKE) fetch-month-reports CONFIG=$(CONFIG); \
 	fi
 	$(PYTHON) $(TWSE_MODULE_DIR)/month_reports.py --config $(CONFIG)
 
 import-year-reports:
-	@if [ ! -f "$(TWSE_DIR)/Source/year_report.json" ]; then \
-		echo "Source/year_report.json not found, running fetch-year-reports first"; \
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=year_report
+	@if [ ! -f "$(YEAR_REPORT_JSON_PATH)" ]; then \
+		echo "$(YEAR_REPORT_JSON_PATH) not found, running fetch-year-reports first"; \
 		$(MAKE) fetch-year-reports CONFIG=$(CONFIG); \
 	fi
 	$(PYTHON) $(TWSE_MODULE_DIR)/year_reports.py --config $(CONFIG)
@@ -138,19 +159,24 @@ sync-year-reports:
 	$(PYTHON) $(TWSE_MODULE_DIR)/year_reports.py --config $(CONFIG) --fetch $(if $(TIMEOUT),--timeout $(TIMEOUT),)
 
 clean-company-json:
-	rm -f $(TWSE_DIR)/Source/listed_company.json
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=company
+	rm -f $(COMPANY_JSON_PATH)
 
 clean-fund-json:
-	rm -f $(TWSE_DIR)/Source/fund.json
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=fund
+	rm -f $(FUND_JSON_PATH)
 
 clean-day-reports-json:
-	rm -f $(TWSE_DIR)/Source/day_report.json
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=day_report
+	rm -f $(DAY_REPORT_JSON_PATH)
 
 clean-month-reports-json:
-	rm -f $(TWSE_DIR)/Source/month_report.json
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=month_report
+	rm -f $(MONTH_REPORT_JSON_PATH)
 
 clean-year-reports-json:
-	rm -f $(TWSE_DIR)/Source/year_report.json
+	$(MAKE) validate-config CONFIG=$(CONFIG) DATASET=year_report
+	rm -f $(YEAR_REPORT_JSON_PATH)
 
 clean-log:
 	$(PYTHON) $(TWSE_DIR)/init.py --config $(CONFIG) --clean-log

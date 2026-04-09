@@ -118,22 +118,11 @@ def resolve_target(
     config_path: Path | None = None,
     *,
     dataset_name: str,
-    default_api_endpoint: str = "/opendata/t187ap03_L",
-    default_schema_path: str = "database/init_company.sql",
-    default_table_name: str = "companies",
-    default_json_name: str = "listed_company.json",
     api_url: str | None = None,
     output_path: Path | None = None,
     description: str = DEFAULT_DESCRIPTION,
 ) -> OpenDataTarget:
-    dataset = get_dataset_config(
-        dataset_name,
-        config_path,
-        default_api_endpoint=default_api_endpoint,
-        default_schema_path=default_schema_path,
-        default_table_name=default_table_name,
-        default_json_name=default_json_name,
-    )
+    dataset = get_dataset_config(dataset_name, config_path)
     resolved_api_url = api_url or dataset.api_url
     resolved_output_path = output_path or dataset.json_path
 

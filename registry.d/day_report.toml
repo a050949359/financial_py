@@ -1,0 +1,4 @@
+api_endpoint = "/exchangeReport/STOCK_DAY_ALL"
+schema_path = "database/init_day_report.sql"
+table_name = "day_reports"
+json_name = "day_report.json"

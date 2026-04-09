@@ -36,10 +36,6 @@ class ImportTarget:
     conflict_columns: tuple[str, ...]
     row_transform: RowTransform | None
     description: str
-    default_api_endpoint: str
-    default_schema_path: str
-    default_table_name: str
-    default_json_name: str
 
 
 def create_import_target(
@@ -48,25 +44,16 @@ def create_import_target(
     field_mapping: dict[str, str] | None,
     conflict_columns: tuple[str, ...],
     description: str,
-    default_api_endpoint: str,
-    default_schema_path: str,
-    default_table_name: str,
-    default_json_name: str,
     insert_columns: tuple[str, ...] | None = None,
     row_transform: RowTransform | None = None,
     config_path: Path | None = None,
 ) -> ImportTarget:
     if field_mapping is None and insert_columns is None:
         raise ValueError("field_mapping 與 insert_columns 不能同時省略")
+    if not conflict_columns:
+        raise ValueError("conflict_columns 不能為空")
 
-    dataset_config = get_dataset_config(
-        dataset_name,
-        config_path,
-        default_api_endpoint=default_api_endpoint,
-        default_schema_path=default_schema_path,
-        default_table_name=default_table_name,
-        default_json_name=default_json_name,
-    )
+    dataset_config = get_dataset_config(dataset_name, config_path)
     return ImportTarget(
         dataset_name=dataset_name,
         schema_path=dataset_config.schema_path,
@@ -77,10 +64,6 @@ def create_import_target(
         conflict_columns=conflict_columns,
         row_transform=row_transform,
         description=description,
-        default_api_endpoint=default_api_endpoint,
-        default_schema_path=default_schema_path,
-        default_table_name=default_table_name,
-        default_json_name=default_json_name,
     )
 
 
@@ -153,7 +136,7 @@ def normalize_row(
     if row_transform is not None:
         return row_transform(row)
     if field_mapping is None:
-        raise ValueError("field_mapping is required when row_transform is not provided")
+        raise ValueError("未提供 row_transform 時必須設定 field_mapping")
 
     normalized: dict[str, str] = {}
     for source_key, target_key in field_mapping.items():
@@ -205,14 +188,7 @@ def upsert_rows(
 def run_import(args: argparse.Namespace, target: ImportTarget, fetch_rows: FetchRows) -> tuple[int, Path]:
     setup_logging(args.config, LOGGER.name)
     system_config = get_system_config(args.config)
-    dataset_config = get_dataset_config(
-        target.dataset_name,
-        args.config,
-        default_api_endpoint=target.default_api_endpoint,
-        default_schema_path=target.default_schema_path,
-        default_table_name=target.default_table_name,
-        default_json_name=target.default_json_name,
-    )
+    dataset_config = get_dataset_config(target.dataset_name, args.config)
 
     db_path = args.db_path or system_config.db_path
     schema_path = args.schema_path or dataset_config.schema_path

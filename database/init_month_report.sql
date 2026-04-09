@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS month_reports (
     lowest_price TEXT,
     weighted_avg_price TEXT,
     turnover_ratio TEXT,
-    payload_json TEXT NOT NULL,
     imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (company_code, report_period)
 );

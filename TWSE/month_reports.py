@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 import sys
 from typing import Any
@@ -19,10 +18,6 @@ from core.importer import ImportTarget, create_import_target, normalize_value, r
 
 DATASET_NAME = "month_report"
 REPORT_TYPE = "month"
-DEFAULT_API_ENDPOINT = "/exchangeReport/FMSRFK_ALL"
-DEFAULT_SCHEMA_PATH = "database/init_month_report.sql"
-DEFAULT_TABLE_NAME = "month_reports"
-DEFAULT_JSON_NAME = "month_report.json"
 PERIOD_FIELD = "Month"
 FETCH_DESCRIPTION = "抓取 TWSE 上市證券月報成交資料 OpenAPI"
 IMPORT_DESCRIPTION = "初始化並匯入 TWSE 上市證券月報成交資料到 SQLite"
@@ -49,7 +44,6 @@ INSERT_COLUMNS = (
     "lowest_price",
     "weighted_avg_price",
     "turnover_ratio",
-    "payload_json",
 )
 
 
@@ -61,10 +55,6 @@ def build_fetch_target(
     return resolve_target(
         config_path,
         dataset_name=DATASET_NAME,
-        default_api_endpoint=DEFAULT_API_ENDPOINT,
-        default_schema_path=DEFAULT_SCHEMA_PATH,
-        default_table_name=DEFAULT_TABLE_NAME,
-        default_json_name=DEFAULT_JSON_NAME,
         api_url=api_url,
         output_path=output_path,
         description=FETCH_DESCRIPTION,
@@ -100,7 +90,6 @@ def transform_month_report_row(row: dict[str, Any]) -> dict[str, str]:
         "lowest_price": normalize_value(row.get("LowestPrice", "")),
         "weighted_avg_price": normalize_value(row.get("WeightedAvgPriceAB", "")),
         "turnover_ratio": normalize_value(row.get("TurnoverRatio", "")),
-        "payload_json": json.dumps(row, ensure_ascii=False, separators=(",", ":")),
     }
 
 
@@ -112,10 +101,6 @@ def build_import_target(config_path: Path | None = None) -> ImportTarget:
         insert_columns=INSERT_COLUMNS,
         row_transform=transform_month_report_row,
         description=IMPORT_DESCRIPTION,
-        default_api_endpoint=DEFAULT_API_ENDPOINT,
-        default_schema_path=DEFAULT_SCHEMA_PATH,
-        default_table_name=DEFAULT_TABLE_NAME,
-        default_json_name=DEFAULT_JSON_NAME,
         config_path=config_path,
     )
 
