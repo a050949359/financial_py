@@ -9,8 +9,11 @@
 - 不要把原始資料、程式碼、schema、log 混放在同一層。
 - 原始 JSON 一律放在 Source/，且 `Source/*.json` 不納入版本控制（由 .gitignore 管理）。
 - schema SQL 一律放在 database/。
+- dataset 註冊表一律放在 registry.d/，採一個 dataset 一個 TOML 檔。
 - 共用設定一律放在 config.toml。
-- 共用初始化與設定解析放在 init.py。
+- `init.py` 是共用初始化與 CLI 入口。
+- config 解析與驗證實作放在 `utils/config.py`。
+- logging 共用能力放在 `utils/logging.py`。
 - 共用 API 抓取能力放在 core/fetcher.py。
 - 共用 SQLite 匯入能力放在 core/importer.py。
 - dataset 專屬邏輯集中在 TWSE/（如 company.py、fund.py、day_reports.py、month_reports.py、year_reports.py）。
@@ -32,11 +35,12 @@
 
 ### 設定 API 使用準則
 
-- 讀取原始設定時，使用 `init.py` 的 `get_raw_config()`，不要在其他模組自行解析 TOML。
+- 讀取原始設定時，優先使用 `init.py` 對外提供的 `get_raw_config()`；不要在其他模組自行解析 TOML。
 - 讀取共用系統設定時，使用 `get_system_config()`，不要直接操作 `config["system"]`。
 - 讀取 dataset 設定時，使用 `get_dataset_config()`，不要在各模組重複組 URL 與路徑。
 - 若同時需要 system 與 dataset 設定，優先共用同一份 `config_path`，避免混用不同設定來源。
 - 新功能若需要設定值，優先擴充 `SystemConfig` / `DatasetConfig`，再由呼叫端使用，不要散落字典存取。
+- dataset 預設值與支援清單從 `registry.d/*.toml` 讀取，不要再把 registry 寫回硬編碼字典。
 
 ## Python 實作規範
 
@@ -50,11 +54,13 @@
 
 ## Makefile 規範
 
-- 優先使用顯式 target，不要回到 make fetch TARGET=company 這種模式。
+- 優先使用通用 target 搭配 Makefile 變數，例如 `make fetch DATASET=company`。
+- 通用 target 以 `validate-config`、`init-schema`、`fetch`、`import`、`sync`、`clean-json` 為主。
+- 不要引入 `make --dataset company fetch` 或類似 CLI 旗標風格的 Make 用法。
 - help 內容必須與實際 target 保持一致。
 - 若新增 target，請補上簡短用途說明。
 - 若某個 Python 參數會被頻繁使用，優先考慮是否暴露為 Makefile 變數。
-- 既有 target 名稱若非必要不要改，避免破壞使用習慣。
+- 若新增 dataset，優先沿用既有通用 target，不要再為每個 dataset 展開成整組顯式 target。
 
 ## Log 規範
 

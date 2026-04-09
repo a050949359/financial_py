@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sqlite3
 
 from utils.config import ConfigValidationError
-from utils.config import DEFAULT_CONFIG_PATH
 from utils.config import get_dataset_config
 from utils.config import get_dataset_json_path
 from utils.config import get_raw_config
@@ -22,15 +20,14 @@ def cleanup_old_logs(log_dir: Path, retention_days: int) -> int:
 
 
 def setup_logging(
-    config_path: Path | None = None,
     logger_name: str | None = None,
 ) -> Path:
-    config = get_system_config(config_path)
+    config = get_system_config()
     return configure_daily_file_logger(config.log_path, config.debug, logger_name)
 
 
-def create_sqlite_database_file(config_path: Path | None = None) -> Path:
-    config = get_system_config(config_path)
+def create_sqlite_database_file() -> Path:
+    config = get_system_config()
     if config.db_driver != "sqlite":
         raise ValueError(f"不支援的 db_driver: {config.db_driver}")
 
@@ -42,12 +39,6 @@ def create_sqlite_database_file(config_path: Path | None = None) -> Path:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="依 config 建立 SQLite 資料庫檔案")
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=DEFAULT_CONFIG_PATH,
-        help="config.toml 路徑",
-    )
     parser.add_argument(
         "--clean-log",
         action="store_true",
@@ -75,11 +66,11 @@ def main() -> None:
     args = build_parser().parse_args()
 
     if args.print_dataset_json_path:
-        print(get_dataset_json_path(args.print_dataset_json_path, args.config))
+        print(get_dataset_json_path(args.print_dataset_json_path))
         return
 
     if args.validate_config:
-        validate_config(args.config, args.dataset)
+        validate_config(args.dataset)
         if args.dataset:
             print(f"config ok: {args.dataset}")
         else:
@@ -87,13 +78,13 @@ def main() -> None:
         return
 
     if args.clean_log:
-        config = get_system_config(args.config)
+        config = get_system_config()
         config.log_path.mkdir(parents=True, exist_ok=True)
         removed_count = cleanup_old_logs(config.log_path, config.log_retention_days)
         print(f"removed {removed_count} log files from {config.log_path}")
         return
 
-    db_path = create_sqlite_database_file(args.config)
+    db_path = create_sqlite_database_file()
     print(db_path)
 
 
