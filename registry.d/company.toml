@@ -1,0 +1,4 @@
+api_endpoint = "/opendata/t187ap03_L"
+schema_path = "database/init_company.sql"
+table_name = "companies"
+json_name = "listed_company.json"

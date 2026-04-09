@@ -1,0 +1,4 @@
+api_endpoint = "/exchangeReport/FMNPTK_ALL"
+schema_path = "database/init_year_report.sql"
+table_name = "year_reports"
+json_name = "year_report.json"

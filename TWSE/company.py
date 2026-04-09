@@ -53,10 +53,6 @@ FIELD_MAPPING = {
 }
 
 DATASET_NAME = "company"
-DEFAULT_API_ENDPOINT = "/opendata/t187ap03_L"
-DEFAULT_SCHEMA_PATH = "database/init_company.sql"
-DEFAULT_TABLE_NAME = "companies"
-DEFAULT_JSON_NAME = "listed_company.json"
 FETCH_DESCRIPTION = "抓取 TWSE 上市公司基本資料 OpenAPI"
 IMPORT_DESCRIPTION = "初始化並匯入 TWSE 上市公司基本資料到 SQLite"
 
@@ -69,10 +65,6 @@ def build_fetch_target(
     return resolve_target(
         config_path,
         dataset_name=DATASET_NAME,
-        default_api_endpoint=DEFAULT_API_ENDPOINT,
-        default_schema_path=DEFAULT_SCHEMA_PATH,
-        default_table_name=DEFAULT_TABLE_NAME,
-        default_json_name=DEFAULT_JSON_NAME,
         api_url=api_url,
         output_path=output_path,
         description=FETCH_DESCRIPTION,
@@ -83,12 +75,8 @@ def build_import_target(config_path: Path | None = None) -> ImportTarget:
     return create_import_target(
         dataset_name=DATASET_NAME,
         field_mapping=FIELD_MAPPING,
-        primary_key="company_code",
+        conflict_columns=("company_code",),
         description=IMPORT_DESCRIPTION,
-        default_api_endpoint=DEFAULT_API_ENDPOINT,
-        default_schema_path=DEFAULT_SCHEMA_PATH,
-        default_table_name=DEFAULT_TABLE_NAME,
-        default_json_name=DEFAULT_JSON_NAME,
         config_path=config_path,
     )
 
