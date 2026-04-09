@@ -13,12 +13,10 @@ if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
 from core.fetcher import OpenDataTarget, initialize_fetch_runtime, request_json, resolve_target, run_fetch
-from core.importer import ImportTarget, create_import_target, normalize_value, run_import, build_parser as build_import_parser
+from core.importer import ImportTarget, create_import_target, run_import, build_parser as build_import_parser
 
 
 DATASET_NAME = "year_report"
-REPORT_TYPE = "year"
-PERIOD_FIELD = "Year"
 FETCH_DESCRIPTION = "抓取 TWSE 上市證券年報成交資料 OpenAPI"
 IMPORT_DESCRIPTION = "初始化並匯入 TWSE 上市證券年報成交資料到 SQLite"
 FIELD_MAPPING = {
@@ -34,19 +32,6 @@ FIELD_MAPPING = {
     "HDate": "high_date",
     "LDate": "low_date",
 }
-INSERT_COLUMNS = (
-    "company_code",
-    "company_name",
-    "report_period",
-    "trade_volume",
-    "trade_value",
-    "transaction_count",
-    "highest_price",
-    "lowest_price",
-    "avg_closing_price",
-    "high_date",
-    "low_date",
-)
 
 
 def build_fetch_target(
@@ -80,29 +65,11 @@ def fetch_year_reports(
     return data
 
 
-def transform_year_report_row(row: dict[str, Any]) -> dict[str, str]:
-    return {
-        "company_code": normalize_value(row.get("Code", "")),
-        "company_name": normalize_value(row.get("Name", "")),
-        "report_period": normalize_value(row.get("Year", "")),
-        "trade_volume": normalize_value(row.get("TradeVolume", "")),
-        "trade_value": normalize_value(row.get("TradeValue", "")),
-        "transaction_count": normalize_value(row.get("Transaction", "")),
-        "highest_price": normalize_value(row.get("HighestPrice", "")),
-        "lowest_price": normalize_value(row.get("LowestPrice", "")),
-        "avg_closing_price": normalize_value(row.get("AvgClosingPrice", "")),
-        "high_date": normalize_value(row.get("HDate", "")),
-        "low_date": normalize_value(row.get("LDate", "")),
-    }
-
-
 def build_import_target(config_path: Path | None = None) -> ImportTarget:
     return create_import_target(
         dataset_name=DATASET_NAME,
         field_mapping=FIELD_MAPPING,
         conflict_columns=("company_code", "report_period"),
-        insert_columns=INSERT_COLUMNS,
-        row_transform=transform_year_report_row,
         description=IMPORT_DESCRIPTION,
         config_path=config_path,
     )

@@ -18,11 +18,11 @@ define dataset_json_path
 $(shell $(PYTHON) $(TWSE_DIR)/init.py --config $(CONFIG) --print-dataset-json-path $(1))
 endef
 
-COMPANY_JSON_PATH = $(call dataset_json_path,company)
-FUND_JSON_PATH = $(call dataset_json_path,fund)
-DAY_REPORT_JSON_PATH = $(call dataset_json_path,day_report)
-MONTH_REPORT_JSON_PATH = $(call dataset_json_path,month_report)
-YEAR_REPORT_JSON_PATH = $(call dataset_json_path,year_report)
+COMPANY_JSON_PATH := $(call dataset_json_path,company)
+FUND_JSON_PATH := $(call dataset_json_path,fund)
+DAY_REPORT_JSON_PATH := $(call dataset_json_path,day_report)
+MONTH_REPORT_JSON_PATH := $(call dataset_json_path,month_report)
+YEAR_REPORT_JSON_PATH := $(call dataset_json_path,year_report)
 
 .PHONY: help validate-config init-db init-company-schema init-fund-schema \
 	init-day-reports-schema init-month-reports-schema init-year-reports-schema \
