@@ -79,7 +79,7 @@ def build_import_target(config_path: Path | None = None) -> ImportTarget:
     return create_import_target(
         dataset_name=DATASET_NAME,
         field_mapping=FIELD_MAPPING,
-        primary_key="fund_code",
+        conflict_columns=("fund_code",),
         description=IMPORT_DESCRIPTION,
         default_api_endpoint=DEFAULT_API_ENDPOINT,
         default_schema_path=DEFAULT_SCHEMA_PATH,

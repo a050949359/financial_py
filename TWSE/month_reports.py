@@ -14,7 +14,7 @@ if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
 from core.fetcher import OpenDataTarget, initialize_fetch_runtime, request_json, resolve_target, run_fetch
-from core.importer import ImportTarget, create_import_target, run_import, build_parser as build_import_parser
+from core.importer import ImportTarget, create_import_target, normalize_value, run_import, build_parser as build_import_parser
 
 
 DATASET_NAME = "month_report"
@@ -90,16 +90,16 @@ def fetch_month_reports(
 
 def transform_month_report_row(row: dict[str, Any]) -> dict[str, str]:
     return {
-        "company_code": str(row.get("Code", "")).strip(),
-        "company_name": str(row.get("Name", "")).strip(),
-        "report_period": str(row.get("Month", "")).strip(),
-        "trade_volume": str(row.get("TradeVolumeB", "")).strip(),
-        "trade_value": str(row.get("TradeValueA", "")).strip(),
-        "transaction_count": str(row.get("Transaction", "")).strip(),
-        "highest_price": str(row.get("HighestPrice", "")).strip(),
-        "lowest_price": str(row.get("LowestPrice", "")).strip(),
-        "weighted_avg_price": str(row.get("WeightedAvgPriceAB", "")).strip(),
-        "turnover_ratio": str(row.get("TurnoverRatio", "")).strip(),
+        "company_code": normalize_value(row.get("Code", "")),
+        "company_name": normalize_value(row.get("Name", "")),
+        "report_period": normalize_value(row.get("Month", "")),
+        "trade_volume": normalize_value(row.get("TradeVolumeB", "")),
+        "trade_value": normalize_value(row.get("TradeValueA", "")),
+        "transaction_count": normalize_value(row.get("Transaction", "")),
+        "highest_price": normalize_value(row.get("HighestPrice", "")),
+        "lowest_price": normalize_value(row.get("LowestPrice", "")),
+        "weighted_avg_price": normalize_value(row.get("WeightedAvgPriceAB", "")),
+        "turnover_ratio": normalize_value(row.get("TurnoverRatio", "")),
         "payload_json": json.dumps(row, ensure_ascii=False, separators=(",", ":")),
     }
 
@@ -108,7 +108,6 @@ def build_import_target(config_path: Path | None = None) -> ImportTarget:
     return create_import_target(
         dataset_name=DATASET_NAME,
         field_mapping=FIELD_MAPPING,
-        primary_key="company_code",
         conflict_columns=("company_code", "report_period"),
         insert_columns=INSERT_COLUMNS,
         row_transform=transform_month_report_row,

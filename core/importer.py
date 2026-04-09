@@ -31,8 +31,7 @@ class ImportTarget:
     schema_path: Path
     table_name: str
     json_path: Path
-    primary_key: str
-    field_mapping: dict[str, str]
+    field_mapping: dict[str, str] | None
     insert_columns: tuple[str, ...]
     conflict_columns: tuple[str, ...]
     row_transform: RowTransform | None
@@ -46,18 +45,20 @@ class ImportTarget:
 def create_import_target(
     *,
     dataset_name: str,
-    field_mapping: dict[str, str],
-    primary_key: str,
+    field_mapping: dict[str, str] | None,
+    conflict_columns: tuple[str, ...],
     description: str,
     default_api_endpoint: str,
     default_schema_path: str,
     default_table_name: str,
     default_json_name: str,
     insert_columns: tuple[str, ...] | None = None,
-    conflict_columns: tuple[str, ...] | None = None,
     row_transform: RowTransform | None = None,
     config_path: Path | None = None,
 ) -> ImportTarget:
+    if field_mapping is None and insert_columns is None:
+        raise ValueError("field_mapping 與 insert_columns 不能同時省略")
+
     dataset_config = get_dataset_config(
         dataset_name,
         config_path,
@@ -71,10 +72,9 @@ def create_import_target(
         schema_path=dataset_config.schema_path,
         table_name=dataset_config.table_name,
         json_path=dataset_config.json_path,
-        primary_key=primary_key,
         field_mapping=field_mapping,
         insert_columns=insert_columns or tuple(field_mapping.values()),
-        conflict_columns=conflict_columns or (primary_key,),
+        conflict_columns=conflict_columns,
         row_transform=row_transform,
         description=description,
         default_api_endpoint=default_api_endpoint,
@@ -141,18 +141,23 @@ def load_rows(input_json: Path) -> list[dict[str, Any]]:
     return payload
 
 
+def normalize_value(value: Any) -> str:
+    return "" if value is None else str(value).strip()
+
+
 def normalize_row(
     row: dict[str, Any],
-    field_mapping: dict[str, str],
+    field_mapping: dict[str, str] | None,
     row_transform: RowTransform | None = None,
 ) -> dict[str, str]:
     if row_transform is not None:
         return row_transform(row)
+    if field_mapping is None:
+        raise ValueError("field_mapping is required when row_transform is not provided")
 
     normalized: dict[str, str] = {}
     for source_key, target_key in field_mapping.items():
-        value = row.get(source_key, "")
-        normalized[target_key] = "" if value is None else str(value).strip()
+        normalized[target_key] = normalize_value(row.get(source_key, ""))
     return normalized
 
 
@@ -179,7 +184,7 @@ def upsert_rows(
     connection: sqlite3.Connection,
     rows: Iterable[dict[str, Any]],
     *,
-    field_mapping: dict[str, str],
+    field_mapping: dict[str, str] | None,
     insert_columns: tuple[str, ...],
     table_name: str,
     conflict_columns: tuple[str, ...],

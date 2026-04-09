@@ -14,7 +14,7 @@ if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
 from core.fetcher import OpenDataTarget, initialize_fetch_runtime, request_json, resolve_target, run_fetch
-from core.importer import ImportTarget, create_import_target, run_import, build_parser as build_import_parser
+from core.importer import ImportTarget, create_import_target, normalize_value, run_import, build_parser as build_import_parser
 
 
 DATASET_NAME = "day_report"
@@ -92,17 +92,17 @@ def fetch_day_reports(
 
 def transform_day_report_row(row: dict[str, Any]) -> dict[str, str]:
     return {
-        "company_code": str(row.get("Code", "")).strip(),
-        "company_name": str(row.get("Name", "")).strip(),
-        "report_period": str(row.get("Date", "")).strip(),
-        "trade_volume": str(row.get("TradeVolume", "")).strip(),
-        "trade_value": str(row.get("TradeValue", "")).strip(),
-        "transaction_count": str(row.get("Transaction", "")).strip(),
-        "opening_price": str(row.get("OpeningPrice", "")).strip(),
-        "highest_price": str(row.get("HighestPrice", "")).strip(),
-        "lowest_price": str(row.get("LowestPrice", "")).strip(),
-        "closing_price": str(row.get("ClosingPrice", "")).strip(),
-        "price_change": str(row.get("Change", "")).strip(),
+        "company_code": normalize_value(row.get("Code", "")),
+        "company_name": normalize_value(row.get("Name", "")),
+        "report_period": normalize_value(row.get("Date", "")),
+        "trade_volume": normalize_value(row.get("TradeVolume", "")),
+        "trade_value": normalize_value(row.get("TradeValue", "")),
+        "transaction_count": normalize_value(row.get("Transaction", "")),
+        "opening_price": normalize_value(row.get("OpeningPrice", "")),
+        "highest_price": normalize_value(row.get("HighestPrice", "")),
+        "lowest_price": normalize_value(row.get("LowestPrice", "")),
+        "closing_price": normalize_value(row.get("ClosingPrice", "")),
+        "price_change": normalize_value(row.get("Change", "")),
         "payload_json": json.dumps(row, ensure_ascii=False, separators=(",", ":")),
     }
 
@@ -111,7 +111,6 @@ def build_import_target(config_path: Path | None = None) -> ImportTarget:
     return create_import_target(
         dataset_name=DATASET_NAME,
         field_mapping=FIELD_MAPPING,
-        primary_key="company_code",
         conflict_columns=("company_code", "report_period"),
         insert_columns=INSERT_COLUMNS,
         row_transform=transform_day_report_row,
