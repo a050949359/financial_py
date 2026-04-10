@@ -15,7 +15,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 
-PARENT_DIR = Path(__file__).resolve().parents[1]
+PARENT_DIR = Path(__file__).resolve().parents[2]
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
@@ -24,7 +24,7 @@ from init import get_dataset_config, get_system_config, setup_logging
 
 DEFAULT_BASE_URL = "https://openapi.twse.com.tw/v1"
 DEFAULT_DESCRIPTION = "抓取 TWSE OpenAPI"
-DEFAULT_OUTPUT_PATH = Path("TWSE/opendata.json")
+DEFAULT_OUTPUT_PATH = Path("Source/opendata.json")
 LOGGER = logging.getLogger(__name__)
 
 

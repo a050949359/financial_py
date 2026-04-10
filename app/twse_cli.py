@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
+import sys
 from typing import Any, Callable
 
-from core.fetcher import add_fetch_arguments, parse_request_options, run_fetch_command
-from core.importer import ImportTarget, build_parser as build_import_parser, run_import, run_import_rows
+
+PARENT_DIR = Path(__file__).resolve().parents[1]
+if str(PARENT_DIR) not in sys.path:
+    sys.path.insert(0, str(PARENT_DIR))
+
+from app.core.fetcher import add_fetch_arguments, parse_request_options, run_fetch_command
+from app.core.importer import ImportTarget, build_parser as build_import_parser, run_import, run_import_rows
 
 
 FetchRows = Callable[..., list[dict[str, Any]]]

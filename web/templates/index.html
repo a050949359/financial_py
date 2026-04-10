@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}{{ web_config.site_title }}{% endblock %}
+
+{% block content %}
+<section class="hero-panel">
+    <div class="hero-copy-block">
+        <p class="eyebrow">Market Overview</p>
+        <h1>台股資料首頁</h1>
+        <p class="hero-copy">首頁目前以公司資料表與最新日報為主，所有數字都來自已匯入的 SQLite 內容。</p>
+        <div class="hero-actions">
+            <a class="button button-primary" href="#company-search-app">開始查公司</a>
+            <a class="button" href="{{ url_for('web.companies_api') }}?limit=5">查看 API</a>
+        </div>
+    </div>
+    <aside class="hero-aside panel">
+        <p class="eyebrow">核心指標</p>
+        <ul class="editorial-list">
+            {% for item in home_metrics %}
+            <li>
+                <strong>{{ item.label }}: {{ item.value }}</strong>
+                <span>{{ item.meta }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </aside>
+</section>
+
+<section class="section-block">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Market Snapshot</p>
+            <h2>資料表概況</h2>
+        </div>
+        <p class="section-copy">先展示資料可用性，再展示內容。沒有 schema 或尚未匯入的資料集，直接標示狀態。</p>
+    </div>
+    <div class="panel-grid stats-grid">
+        {% if summary.database_ready %}
+            {% for card in summary.cards %}
+            <article class="panel stat-card {{ 'is-muted' if not card.available else '' }}">
+                <p class="stat-label">{{ card.label }}</p>
+                <p class="stat-value">{{ card.row_count }}</p>
+                <p class="stat-meta">
+                    {% if card.available %}
+                        最近匯入：{{ card.latest_imported_at or '尚無資料' }}
+                    {% else %}
+                        schema 尚未建立
+                    {% endif %}
+                </p>
+            </article>
+            {% endfor %}
+        {% else %}
+            <article class="panel empty-state">
+                <h2>資料庫尚未建立</h2>
+                <p>先執行 make init-db、make init-schema 與 make sync，再回來看網站。</p>
+            </article>
+        {% endif %}
+    </div>
+</section>
+
+<section class="section-block section-split">
+    <article class="panel market-notes">
+        <div class="section-heading compact">
+            <div>
+                <p class="eyebrow">Latest Day Report</p>
+                <h2>最新日報成交值前列</h2>
+            </div>
+        </div>
+        <div class="mini-grid">
+            {% if latest_day_leaders.leaders %}
+                {% for item in latest_day_leaders.leaders %}
+                <a class="mini-card" href="{{ url_for('web.company_detail', company_code=item.company_code) }}">
+                    <strong>{{ item.company_code }} {{ item.company_name }}</strong>
+                    <span>期間：{{ item.report_period }} ｜ 成交值：{{ item.trade_value or '-' }}</span>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="mini-card">
+                    <strong>尚無日報資料</strong>
+                    <span>可先執行 make sync DATASET=day_report 匯入資料後再查看。</span>
+                </div>
+            {% endif %}
+        </div>
+    </article>
+    <article class="panel featured-panel">
+        <div class="section-heading compact">
+            <div>
+                <p class="eyebrow">Company Directory</p>
+                <h2>公司樣本</h2>
+            </div>
+        </div>
+        <div class="featured-list">
+            {% for company in featured_companies %}
+            <a class="featured-item" href="{{ url_for('web.company_detail', company_code=company.company_code) }}">
+                <div>
+                    <strong>{{ company.company_code }}</strong>
+                    <span>{{ company.company_name }}</span>
+                </div>
+                <small>{{ company.industry_category or '未分類' }}</small>
+            </a>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+<section class="panel lookup-panel" id="company-search-app">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Company Lookup</p>
+            <h2>公司查詢</h2>
+        </div>
+        <p class="section-copy">目前從 companies 資料表查詢代號、名稱、簡稱與產業別，局部更新由 Vue 處理。</p>
+    </div>
+
+    <form class="search-form editorial-form" @submit.prevent="submitSearch">
+        <label>
+            <span>代號或名稱</span>
+            <input type="text" v-model.trim="keyword" placeholder="例如 2330 或 台積電">
+        </label>
+        <label>
+            <span>筆數</span>
+            <input type="number" v-model.number="limit" min="1" max="100">
+        </label>
+        <button type="submit" class="button button-primary">更新列表</button>
+    </form>
+
+    <div class="table-shell">
+        <table>
+            <thead>
+                <tr>
+                    <th>公司代號</th>
+                    <th>公司名稱</th>
+                    <th>簡稱</th>
+                    <th>產業別</th>
+                    <th>上市日</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-if="loading">
+                    <td colspan="5">讀取中...</td>
+                </tr>
+                <tr v-else-if="companies.length === 0">
+                    <td colspan="5">查無資料</td>
+                </tr>
+                <tr v-for="company in companies" :key="company.company_code">
+                    <td><a :href="'/companies/' + company.company_code" v-text="company.company_code"></a></td>
+                    <td v-text="company.company_name || '-'"></td>
+                    <td v-text="company.company_short_name || '-'"></td>
+                    <td v-text="company.industry_category || '-'"></td>
+                    <td v-text="company.listed_date || '-'"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const initialCompanies = {{ companies | tojson }};
+const initialKeyword = {{ keyword | tojson }};
+const initialLimit = {{ limit | tojson }};
+
+Vue.createApp({
+    data() {
+        return {
+            companies: initialCompanies,
+            keyword: initialKeyword,
+            limit: initialLimit,
+            loading: false,
+        };
+    },
+    methods: {
+        async submitSearch() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams({
+                    q: this.keyword,
+                    limit: String(this.limit || 20),
+                });
+                const response = await fetch(`/api/companies?${params.toString()}`);
+                const payload = await response.json();
+                this.companies = payload.items;
+            } finally {
+                this.loading = false;
+            }
+        },
+    },
+}).mount('#company-search-app');
+</script>
+{% endblock %}

@@ -27,6 +27,14 @@ class SystemConfig:
 
 
 @dataclass(frozen=True)
+class WebConfig:
+    host: str
+    port: int
+    debug: bool
+    site_title: str
+
+
+@dataclass(frozen=True)
 class DatasetConfig:
     name: str
     project_root: Path
@@ -222,6 +230,28 @@ def get_dataset_config(
     )
 
 
+def get_web_config() -> WebConfig:
+    config = get_raw_config()
+    web_config = config.get("web", {})
+
+    host = _require_non_empty_text(
+        web_config.get("host", "127.0.0.1"),
+        "web.host",
+    )
+    port = int(web_config.get("port", 5000))
+    site_title = _require_non_empty_text(
+        web_config.get("site_title", "TWSE Market Explorer"),
+        "web.site_title",
+    )
+
+    return WebConfig(
+        host=host,
+        port=port,
+        debug=_parse_bool(web_config.get("debug", False)),
+        site_title=site_title,
+    )
+
+
 def validate_config(dataset_name: str | None = None) -> None:
     resolved_config_path = get_config_path()
 
@@ -241,6 +271,10 @@ def validate_config(dataset_name: str | None = None) -> None:
         raise ConfigValidationError(
             "config 驗證失敗: system.log_retention_days 不可小於 0"
         )
+
+    web_config = get_web_config()
+    if not 1 <= web_config.port <= 65535:
+        raise ConfigValidationError("config 驗證失敗: web.port 必須介於 1 到 65535")
 
     registry = _load_dataset_defaults_registry()
     target_datasets = (dataset_name,) if dataset_name else tuple(registry)

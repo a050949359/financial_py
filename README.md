@@ -6,14 +6,21 @@
 
 ## 目錄說明
 
-- TWSE/: dataset 專屬流程腳本
-- core/fetcher.py / core/importer.py: 共用抓取與匯入模組
+- app/twse/: dataset 專屬流程腳本
+- app/twse/cli.py: TWSE dataset 共用 CLI helper
+- app/core/fetcher.py / app/core/importer.py: 共用抓取與匯入模組
+- app/query_service.py: 供 Web 與其他讀取場景重用的 SQLite 查詢層
+- app/cli.py: 內部 CLI 實作入口，init.py 會轉呼叫這裡
+- web/: Flask、Jinja、靜態資源與 Web route
+- docs/visual-style.md: Web 視覺風格與內容規則
+- docs/web-roadmap.md: Web 分階段開發清單
 - registry.d/: dataset 註冊表，每個 dataset 一個 TOML 檔
 - Source/: 下載回來的原始 JSON
 - database/: SQLite schema SQL
 - log/: 執行過程中的錯誤 log
 - utils/: 共用工具模組（例如 log 處理）
-- init.py: 共用設定讀取、SQLite db 檔初始化、log 清理入口
+- app/: 應用層套件，集中 core、dataset 與 CLI 邏輯
+- init.py: 相容 CLI 包裝入口，對外維持既有使用方式
 - config.toml: 專案設定
 - Makefile: 常用操作指令入口
 
@@ -58,15 +65,52 @@ make import DATASET=company
 make sync DATASET=company
 make clean-json DATASET=company
 make init-db
+make run-web
 make clean-log
 ```
+
+## Web 介面
+
+Web 第一版採 Flask + Jinja，並在公司查詢區塊用少量 Vue 做雙向綁定。
+
+先安裝依賴：
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+啟動方式：
+
+```bash
+make run-web
+make run-web WEB_PORT=5050
+python3 web/app.py --port 5050
+```
+
+預設會讀取 config.toml 的 [web] 區塊：
+
+```toml
+[web]
+host = "127.0.0.1"
+port = 5000
+debug = false
+site_title = "TWSE Market Explorer"
+```
+
+目前提供：
+
+- 首頁統計卡片
+- 公司查詢頁
+- 公司詳細頁
+- /api/companies JSON 查詢 API
+- /health 健康檢查
 
 也可以直接呼叫共用 fetcher：
 
 ```bash
-python3 core/fetcher.py --dataset company
-python3 core/fetcher.py --api-path /opendata/t187ap03_L
-python3 core/fetcher.py --api-path /exchangeReport/STOCK_DAY_ALL --output Source/day_report.json
+python3 app/core/fetcher.py --dataset company
+python3 app/core/fetcher.py --api-path /opendata/t187ap03_L
+python3 app/core/fetcher.py --api-path /exchangeReport/STOCK_DAY_ALL --output Source/day_report.json
 ```
 
 ## 可用參數
@@ -86,9 +130,9 @@ make fetch DATASET=fund API_URL=https://openapi.twse.com.tw/v1/opendata/t187ap47
 若直接使用共用 fetcher：
 
 ```bash
-python3 core/fetcher.py --dataset fund
-python3 core/fetcher.py --api-path /opendata/t187ap47_L
-python3 core/fetcher.py --api-url https://openapi.twse.com.tw/v1/exchangeReport/FMNPTK_ALL --output Source/year_report.json
+python3 app/core/fetcher.py --dataset fund
+python3 app/core/fetcher.py --api-path /opendata/t187ap47_L
+python3 app/core/fetcher.py --api-url https://openapi.twse.com.tw/v1/exchangeReport/FMNPTK_ALL --output Source/year_report.json
 ```
 
 共用 fetcher 也支援自訂 request 參數。
@@ -96,10 +140,10 @@ python3 core/fetcher.py --api-url https://openapi.twse.com.tw/v1/exchangeReport/
 下列是非 TWSE JSON API 的語法範例；TWSE OpenAPI 目前仍以 GET 為主：
 
 ```bash
-python3 core/fetcher.py --api-url <API_URL> --method POST
-python3 core/fetcher.py --api-url <API_URL> --header 'X-Token: abc123' --header 'Accept: application/json'
-python3 core/fetcher.py --api-url <API_URL> --query page=1 --query limit=100
-python3 core/fetcher.py --api-url <API_URL> --method POST --body-json '{"hello":"world"}'
+python3 app/core/fetcher.py --api-url <API_URL> --method POST
+python3 app/core/fetcher.py --api-url <API_URL> --header 'X-Token: abc123' --header 'Accept: application/json'
+python3 app/core/fetcher.py --api-url <API_URL> --query page=1 --query limit=100
+python3 app/core/fetcher.py --api-url <API_URL> --method POST --body-json '{"hello":"world"}'
 ```
 
 ## 設定檔

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}{{ company.company_code }} {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<section class="detail-hero panel">
+    <div class="detail-hero-main">
+        <p class="eyebrow">Company Detail</p>
+        <h1>{{ company.company_name }}</h1>
+        <div class="ticker-line">
+            <strong>{{ company.company_code }}</strong>
+            <span>{{ company.company_short_name or '未提供簡稱' }}</span>
+            <span>{{ company.industry_category or '未提供產業別' }}</span>
+        </div>
+        <p class="hero-copy">資料來自 companies 與最新一筆日、月、年報。未匯入的項目不顯示示意數值。</p>
+    </div>
+    <aside class="detail-hero-side">
+        {% for item in detail_highlights %}
+        <div class="mini-card">
+            <strong>{{ item.label }}</strong>
+            <span>{{ item.value }}</span>
+        </div>
+        {% endfor %}
+    </aside>
+</section>
+
+<section class="section-block detail-layout">
+    <article class="panel detail-card">
+        <div class="section-heading compact">
+            <div>
+                <p class="eyebrow">Profile</p>
+                <h2>公司基本資料</h2>
+            </div>
+        </div>
+        <dl class="detail-grid">
+            {% for item in profile_items %}
+            <div>
+                <dt>{{ item.label }}</dt>
+                <dd>{{ item.value }}</dd>
+            </div>
+            {% endfor %}
+        </dl>
+    </article>
+
+    <aside class="panel note-card">
+        <p class="eyebrow">Contact & Registry</p>
+        <h2>聯絡與登記資訊</h2>
+        <dl class="contact-grid">
+            {% for item in contact_items %}
+            <div>
+                <dt>{{ item.label }}</dt>
+                <dd>{{ item.value }}</dd>
+            </div>
+            {% endfor %}
+        </dl>
+    </aside>
+</section>
+
+<section class="section-block">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Report Snapshot</p>
+            <h2>最新報表摘要</h2>
+        </div>
+        <p class="section-copy">以目前資料庫中各報表的最新一筆資料為準，先呈現可驗證的摘要欄位。</p>
+    </div>
+    <div class="panel-grid report-grid">
+        {% for section in report_sections %}
+        <article class="panel report-card {{ 'is-muted' if not section.report else '' }}">
+            <p class="eyebrow">{{ section.subtitle }}</p>
+            <h3>{{ section.title }}</h3>
+            {% if section.report %}
+            <dl>
+                {% for metric in section.metrics %}
+                <div>
+                    <dt>{{ metric.label }}</dt>
+                    <dd>{{ metric.value }}</dd>
+                </div>
+                {% endfor %}
+            </dl>
+            {% else %}
+            <p>目前沒有可顯示資料。</p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
