@@ -1,0 +1,1 @@
+"""Application package for domain logic and future CLI/web integration."""

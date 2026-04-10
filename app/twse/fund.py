@@ -8,13 +8,13 @@ import sys
 from typing import Any
 
 
-PARENT_DIR = Path(__file__).resolve().parents[1]
+PARENT_DIR = Path(__file__).resolve().parents[2]
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from core.fetcher import fetch_dataset_rows
-from core.importer import ImportTarget, create_import_target
-from TWSE.runner import build_dataset_parser, run_dataset_cli
+from app.core.fetcher import fetch_dataset_rows
+from app.core.importer import ImportTarget, create_import_target
+from app.twse.cli import build_dataset_parser, run_dataset_cli
 
 
 FIELD_MAPPING = {

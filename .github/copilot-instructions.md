@@ -14,9 +14,9 @@
 - `init.py` 是共用初始化與 CLI 入口。
 - config 解析與驗證實作放在 `utils/config.py`。
 - logging 共用能力放在 `utils/logging.py`。
-- 共用 API 抓取能力放在 core/fetcher.py。
-- 共用 SQLite 匯入能力放在 core/importer.py。
-- dataset 專屬邏輯集中在 TWSE/（如 company.py、fund.py、day_reports.py、month_reports.py、year_reports.py）。
+- 共用 API 抓取能力放在 app/core/fetcher.py。
+- 共用 SQLite 匯入能力放在 app/core/importer.py。
+- dataset 專屬邏輯集中在 app/twse/（如 company.py、fund.py、day_reports.py、month_reports.py、year_reports.py）。
 - Makefile 是主要操作入口，新增功能時優先思考是否需要對應的 make target。
 
 ## 命名規範
@@ -24,7 +24,7 @@
 - dataset 名稱維持 company 與 fund，不要再引入重複別名。
 - schema 檔名使用 init_<dataset>.sql 格式。
 - 不要再引入 basic、service、process、importer 的重複變體來表示同一層責任，除非責任真的不同。
-- 共用模組名稱維持 core/fetcher.py 與 core/importer.py。
+- 共用模組名稱維持 app/core/fetcher.py 與 app/core/importer.py。
 
 ## 設定規範
 

@@ -8,33 +8,34 @@ import sys
 from typing import Any
 
 
-PARENT_DIR = Path(__file__).resolve().parents[1]
+PARENT_DIR = Path(__file__).resolve().parents[2]
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from core.fetcher import fetch_dataset_rows
-from core.importer import ImportTarget, create_import_target
-from TWSE.runner import build_dataset_parser, run_dataset_cli
+from app.core.fetcher import fetch_dataset_rows
+from app.core.importer import ImportTarget, create_import_target
+from app.twse.cli import build_dataset_parser, run_dataset_cli
 
 
-DATASET_NAME = "month_report"
-FETCH_DESCRIPTION = "抓取 TWSE 上市證券月報成交資料 OpenAPI"
-IMPORT_DESCRIPTION = "初始化並匯入 TWSE 上市證券月報成交資料到 SQLite"
+DATASET_NAME = "day_report"
+FETCH_DESCRIPTION = "抓取 TWSE 上市證券日報成交資料 OpenAPI"
+IMPORT_DESCRIPTION = "初始化並匯入 TWSE 上市證券日報成交資料到 SQLite"
 FIELD_MAPPING = {
     "Code": "company_code",
     "Name": "company_name",
-    "Month": "report_period",
-    "TradeVolumeB": "trade_volume",
-    "TradeValueA": "trade_value",
+    "Date": "report_period",
+    "TradeVolume": "trade_volume",
+    "TradeValue": "trade_value",
     "Transaction": "transaction_count",
+    "OpeningPrice": "opening_price",
     "HighestPrice": "highest_price",
     "LowestPrice": "lowest_price",
-    "WeightedAvgPriceAB": "weighted_avg_price",
-    "TurnoverRatio": "turnover_ratio",
+    "ClosingPrice": "closing_price",
+    "Change": "price_change",
 }
 
 
-def fetch_month_reports(
+def fetch_day_reports(
     api_url: str | None = None,
     timeout: int = 30,
     method: str = "GET",
@@ -46,7 +47,7 @@ def fetch_month_reports(
     return fetch_dataset_rows(
         dataset_name=DATASET_NAME,
         description=FETCH_DESCRIPTION,
-        payload_error_message="TWSE payload for month is not a list",
+        payload_error_message="TWSE payload for day is not a list",
         api_url=api_url,
         timeout=timeout,
         method=method,
@@ -67,7 +68,7 @@ def build_import_target() -> ImportTarget:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    return build_dataset_parser("TWSE 上市證券月報工具")
+    return build_dataset_parser("TWSE 上市證券日報工具")
 
 
 def main() -> None:
@@ -75,7 +76,7 @@ def main() -> None:
     run_dataset_cli(
         args,
         import_target=build_import_target(),
-        fetch_rows=fetch_month_reports,
+        fetch_rows=fetch_day_reports,
         fetch_description=FETCH_DESCRIPTION,
     )
 

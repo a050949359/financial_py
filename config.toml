@@ -6,6 +6,12 @@ log_path = "log"
 log_retention_days = 30
 debug = false
 
+[web]
+host = "127.0.0.1"
+port = 5000
+debug = false
+site_title = "TWSE Market Explorer"
+
 [company]
 api_endpoint = "/opendata/t187ap03_L"
 schema_path = "database/init_company.sql"

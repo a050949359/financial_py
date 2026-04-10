@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ web_config.site_title }}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('web.static', filename='site.css') }}">
+</head>
+<body>
+    <div class="backdrop-orb orb-left"></div>
+    <div class="backdrop-orb orb-right"></div>
+    <div class="page-shell">
+        <header class="site-header">
+            <a class="brand-mark" href="{{ url_for('web.index') }}">
+                <span class="brand-kicker">TWSE</span>
+                <span class="brand-title">{{ web_config.site_title }}</span>
+            </a>
+            <nav class="site-nav">
+                <a href="{{ url_for('web.index') }}">市場首頁</a>
+                <a href="{{ url_for('web.companies_api') }}">公司 API</a>
+                <a href="{{ url_for('web.health') }}">Health</a>
+            </nav>
+        </header>
+        <main class="content-shell">
+            {% block content %}{% endblock %}
+        </main>
+        <footer class="site-footer">
+            <p>資料來源為 TWSE OpenAPI 與本地 SQLite。畫面只展示目前匯入成功的資料。</p>
+        </footer>
+    </div>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
